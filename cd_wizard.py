@@ -9,7 +9,6 @@
 
 from PyQt4 import QtGui
 
-
 def createIntroPage():
     page = QtGui.QWizardPage()
     page.setTitle("Introduction")
@@ -30,13 +29,22 @@ def choose_cd():
     page = QtGui.QWizardPage()
     page.setTitle("Choose CD Drive")
 
-    file_dialog = QtGui.QFileDialog()
-    file_dialog.setFileMode(QtGui.QFileDialog.Directory)
-    file_dialog.setOptions(QtGui.QFileDialog.ShowDirsOnly)
-    file_dialog.setDirectory("::{20D04FE0-3AEA-1069-A2D8-08002B30309D}")
-
     layout = QtGui.QVBoxLayout()
-    layout.addWidget(file_dialog)
+
+    #file_dialog = QtGui.QFileDialog()
+    #file_dialog.setFileMode(QtGui.QFileDialog.Directory)
+    #file_dialog.setOptions(QtGui.QFileDialog.ShowDirsOnly)
+    #file_dialog.setDirectory("::{20D04FE0-3AEA-1069-A2D8-08002B30309D}")
+    #layout.addWidget(file_dialog)
+
+    def handle_button():
+        path = QtGui.QFileDialog.getExistingDirectory(None, 'Select CD', "::{20D04FE0-3AEA-1069-A2D8-08002B30309D}", QtGui.QFileDialog.ShowDirsOnly)
+        print path
+
+    button = QtGui.QPushButton('Select CD')
+    button.clicked.connect(handle_button)
+    layout.addWidget(button)
+
     page.setLayout(layout)
 
     return page
