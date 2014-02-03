@@ -26,6 +26,22 @@ def createIntroPage():
     return page
 
 
+def choose_cd():
+    page = QtGui.QWizardPage()
+    page.setTitle("Choose CD Drive")
+
+    file_dialog = QtGui.QFileDialog()
+    file_dialog.setFileMode(QtGui.QFileDialog.Directory)
+    file_dialog.setOptions(QtGui.QFileDialog.ShowDirsOnly)
+    file_dialog.setDirectory('/')
+
+    layout = QtGui.QVBoxLayout()
+    layout.addWidget(file_dialog)
+    page.setLayout(layout)
+
+    return page
+
+
 def createConclusionPage():
     page = QtGui.QWizardPage()
     page.setTitle("Conclusion")
@@ -48,6 +64,7 @@ if __name__ == '__main__':
 
     wizard = QtGui.QWizard()
     wizard.addPage(createIntroPage())
+    wizard.addPage(choose_cd())
     wizard.addPage(createConclusionPage())
     wizard.setWindowTitle("Music Locker Uploader")
     wizard.show()
