@@ -33,7 +33,7 @@ def choose_cd():
     file_dialog = QtGui.QFileDialog()
     file_dialog.setFileMode(QtGui.QFileDialog.Directory)
     file_dialog.setOptions(QtGui.QFileDialog.ShowDirsOnly)
-    file_dialog.setDirectory('/')
+    file_dialog.setDirectory("::{20D04FE0-3AEA-1069-A2D8-08002B30309D}")
 
     layout = QtGui.QVBoxLayout()
     layout.addWidget(file_dialog)
