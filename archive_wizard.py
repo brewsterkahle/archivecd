@@ -123,18 +123,22 @@ class IntroPage(WizardPage):
 
         title_label = QtGui.QLabel(self.tr('<font size="5"><b>Introduction</b></font>'))
 
-        #Check to ensure we are on Windows
-        if sys.platform != 'win32':
-            label = QtGui.QLabel(self.tr('''<font size="6">This program must be run on a Windows computer.</font>'''))
-        else:
-            label = QtGui.QLabel(self.tr(
-                                 '''<font size="3">This wizard will help you archive your CDs in your Personal Music Locker.
-                                 Please insert a CD and click Next</font>'''))
-
-        label.setWordWrap(True)
         layout = QtGui.QVBoxLayout()
         layout.addWidget(title_label)
         layout.addSpacing(10)
+
+        #Check to ensure we are on Windows
+        if sys.platform != 'win32':
+            error_label = QtGui.QLabel(self.tr('''<font size="6">This program must be run on a Windows computer.</font>'''))
+            error_label.setWordWrap(True)
+            layout.addWidget(error_label)
+            self.setLayout(layout)
+            return
+
+        label = QtGui.QLabel(self.tr(
+                             '''<font size="3">This wizard will help you archive your CDs in your Personal Music Locker.
+                             Please insert a CD and click Next</font>'''))
+        label.setWordWrap(True)
         layout.addWidget(label)
         self.setLayout(layout)
 
