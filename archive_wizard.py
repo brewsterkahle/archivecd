@@ -36,10 +36,9 @@ class ArchiveWizard(QtGui.QDialog):
 
         self.resize(640, 480)
 
-        self.intro_page = IntroPage(self)
+        self.intro_page    = IntroPage(self)
+        self.read_toc_page = ReadTOCPage(self) 
         self.setFirstPage(self.intro_page)
-
-
 
 
     def historyPages(self):
@@ -137,13 +136,48 @@ class IntroPage(WizardPage):
 
         label = QtGui.QLabel(self.tr(
                              '''<font size="3">This wizard will help you archive your CDs in your Personal Music Locker.
-                             Please insert a CD and click Next</font>'''))
+                             Please insert a CD and choose your CD drive below</font>'''))
         label.setWordWrap(True)
         layout.addWidget(label)
+
+        #based on picard/util/cdrom.py
+        from ctypes import windll
+        GetLogicalDrives = windll.kernel32.GetLogicalDrives
+        GetDriveType = windll.kernel32.GetDriveTypeA
+        DRIVE_CDROM = 5
+        cd_drives = ['(Choose CD Drive)']
+        mask = GetLogicalDrives()
+        for i in range(26):
+            if mask >> i & 1:
+                drive = chr(i + ord("A")) + ":"
+                if GetDriveType(drive) == DRIVE_CDROM:
+                    cd_drives.append(drive)
+
+        self.combo = QtGui.QComboBox()
+        self.combo.addItems(cd_drives)
+        self.connect(self.combo, QtCore.SIGNAL("currentIndexChanged(const QString&)"),
+                     self, QtCore.SIGNAL("completeStateChanged()"))
+
+        layout.addWidget(self.combo)
+
         self.setLayout(layout)
 
     def isComplete(self):
-        return (sys.platform == 'win32')
+        print self.combo.currentIndex()
+        return ((sys.platform == 'win32') and (self.combo.currentIndex() != 0))
+
+
+    def nextPage(self):
+        return self.wizard.read_toc_page
+
+
+# ReadTOCPage
+#_________________________________________________________________________________________
+class ReadTOCPage(WizardPage):
+    def __init__(self, wizard):
+        WizardPage.__init__(self, wizard)
+
+        print self.wizard.intro_page.combo.currentText()
 
 
 # TitlePage
