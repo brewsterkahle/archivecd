@@ -175,9 +175,19 @@ class IntroPage(WizardPage):
 #_________________________________________________________________________________________
 class ReadTOCPage(WizardPage):
     def __init__(self, wizard):
+        import discid
+
         WizardPage.__init__(self, wizard)
 
-        print self.wizard.intro_page.combo.currentText()
+        cd_drive = self.wizard.intro_page.combo.currentText()
+        print 'Reading TOC from', cd_drive
+        disc = discid.read(cd_drive)
+
+        label = QtGui.QLabel(self.tr('<font size="5">The TOC string for drive {d} is {s}</font>'.format(d=cd_drive, s=disc.toc_string)))
+
+        layout = QtGui.QVBoxLayout()
+        layout.addWidget(label)
+        self.setLayout(layout)
 
 
 # TitlePage
