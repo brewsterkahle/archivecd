@@ -142,10 +142,10 @@ class LookupCDPage(WizardPage):
 
         self.status_label = QtGui.QLabel('checking...')
 
-        layout = QtGui.QVBoxLayout()
-        layout.addWidget(self.status_label)
+        self.layout = QtGui.QVBoxLayout()
+        self.layout.addWidget(self.status_label)
 
-        self.setLayout(layout)
+        self.setLayout(self.layout)
         self.is_complete = False
 
 
@@ -163,6 +163,58 @@ class LookupCDPage(WizardPage):
         
         print c
         obj = json.loads(c)
+        if len(obj) == 1:
+            self.show_single_result(obj)
+
+
+    def get_cover_image(self, metadata):
+        img = None
+        for f in metadata['files']:
+            print f
+            if f['name'].endswith('_thumb.jpg'):
+                img = f['name']
+                break
+            #todo: set image if itemimage.jpg not found
+        return img
+
+
+    def fetch_ia_metadata(self, itemid):
+        url = 'https://archive.org/metadata/'+itemid
+        metadata = json.load(urllib.urlopen(url))
+        #print metadata
+        md = {'img': self.get_cover_image(metadata),
+              'title': metadata['metadata']['title'],
+              'creator': metadata['metadata']['creator'],
+             }
+        return md
+
+        
+    def show_single_result(self, obj):
+        self.status_label.setText('A match for this CD was found in our database')
+        item_id = obj[0][0]
+        md = self.fetch_ia_metadata(item_id)
+        if md['img'] is not None:
+            img_label = QtGui.QLabel()
+            img_url = "https://archive.org/download/{id}/{img}".format(id=item_id, img=md['img'])
+            print img_url
+            data = urllib.urlopen(img_url).read()
+            img = QtGui.QImage()
+            img.loadFromData(data)
+            img_label.setPixmap(QtGui.QPixmap(img).scaledToWidth(100))
+            self.layout.addWidget(img_label)
+
+        title_label = QtGui.QLabel(md['title'])
+        creator_label = QtGui.QLabel(md['creator'])
+
+        self.layout.addWidget(title_label)
+        self.layout.addWidget(creator_label)
+
+        yes_button = QtGui.QRadioButton("This is my CD")
+        no_button  = QtGui.QRadioButton("My CD is different from the one shown above")
+        self.layout.addWidget(yes_button)
+        self.layout.addWidget(no_button)
+        yes_button.setChecked(True)
+
 
 
     def isComplete(self):
