@@ -96,6 +96,7 @@ class ReadTOCPage(WizardPage):
 
         self.toc_label = QtGui.QLabel('checking...')
         self.toc_string = None
+        self.is_complete = False
 
         layout = QtGui.QVBoxLayout()
         layout.addWidget(self.toc_label)
@@ -103,18 +104,26 @@ class ReadTOCPage(WizardPage):
         self.setLayout(layout)
 
 
+    def isComplete(self):
+        return self.is_complete
+
+
     def initializePage(self):
         cd_drive = self.wizard.scan_drives_page.combo.currentText()
         print cd_drive
         self.toc_label.setText('reading ' + cd_drive)
         import discid
-        disc = discid.read(str(cd_drive))
+        try:
+            disc = discid.read(str(cd_drive))
+        except discid.disc.DiscError:
+            self.toc_label.setText('Unable to read disc')
+            return
 
         self.toc_string = disc.toc_string
 
         print self.toc_string
         self.toc_label.setText(self.toc_string)
-
+        self.is_complete = True
 
 
 if __name__ == "__main__":
