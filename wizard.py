@@ -9,6 +9,7 @@ import urllib
 # ArchiveWizard
 #_________________________________________________________________________________________
 class ArchiveWizard(QtGui.QWizard):
+    Page_Intro, Page_Scan_Drives, Page_Read_TOC, Page_Lookup_CD, Page_Mark_Added, Page_EAC = range(6)
     def __init__(self, parent=None):
         QtGui.QWizard.__init__(self, parent)
 
@@ -16,11 +17,22 @@ class ArchiveWizard(QtGui.QWizard):
         self.scan_drives_page  = ScanDrivesPage(self)
         self.read_toc_page     = ReadTOCPage(self)
         self.lookup_cd_page    = LookupCDPage(self)
+        self.mark_added_page   = MarkAddedPage(self)
+        self.eac_page          = EACPage(self)
 
-        self.addPage(self.intro_page)
-        self.addPage(self.scan_drives_page)
-        self.addPage(self.read_toc_page)
-        self.addPage(self.lookup_cd_page)
+        self.setPage(self.Page_Intro,       self.intro_page)
+        self.setPage(self.Page_Scan_Drives, self.scan_drives_page)
+        self.setPage(self.Page_Read_TOC,    self.read_toc_page)
+        self.setPage(self.Page_Lookup_CD,   self.lookup_cd_page)
+        self.setPage(self.Page_Mark_Added,  self.mark_added_page)
+        self.setPage(self.Page_EAC,    self.eac_page)
+
+
+    def done(self, x):
+        if x == 1:
+            self.restart()
+        else:
+            QtGui.QApplication.quit()
 
 
 # WizardPage
@@ -147,7 +159,12 @@ class LookupCDPage(WizardPage):
         self.layout.addWidget(self.status_label)
 
         self.setLayout(self.layout)
+
+        self.scroll_area = QtGui.QScrollArea()
+        self.layout.addWidget(self.scroll_area)
+
         self.is_complete = False
+        self.radio_buttons = []
 
 
     def initializePage(self):
@@ -194,10 +211,9 @@ class LookupCDPage(WizardPage):
 
         
     def show_result(self, obj):
-        scroll_area = QtGui.QScrollArea()
-        self.layout.addWidget(scroll_area)
         widget = QtGui.QWidget()        
         vbox = QtGui.QVBoxLayout(widget)
+        self.radio_buttons = []
 
         s = es = ''
         if len(obj) > 1:
@@ -223,14 +239,54 @@ class LookupCDPage(WizardPage):
                 #button.setChecked(True)
                 button.setStyleSheet('QRadioButton {icon-size: 100px;}')
             vbox.addWidget(button)
+            self.radio_buttons.append(button)
 
         no_button  = QtGui.QRadioButton("My CD is different from the one{s} shown above".format(s=s))
         vbox.addWidget(no_button)
-        scroll_area.setWidget(widget)
+        self.radio_buttons.append(no_button)
+        self.scroll_area.setWidget(widget)
+        self.is_complete = True
 
 
     def isComplete(self):
         return self.is_complete
+
+
+    def nextId(self):
+        for i, radio in enumerate(self.radio_buttons):
+            if radio.isChecked():
+                break
+
+        if i == (len(self.radio_buttons) - 1):
+            return self.wizard.Page_EAC
+        else:
+            return self.wizard.Page_Mark_Added
+
+
+# MarkAddedPage
+#_________________________________________________________________________________________
+class MarkAddedPage(WizardPage):
+    def __init__(self, wizard):
+        WizardPage.__init__(self, wizard)
+        self.setTitle('CD Added to Locker')
+        self.setSubTitle('This CD was added to your Music Locker')
+        self.setFinalPage(True)
+        self.setButtonText(QtGui.QWizard.FinishButton, "Scan Another CD")
+
+
+    def nextId(self):
+        return -1
+
+
+
+# EACPage
+#_________________________________________________________________________________________
+class EACPage(WizardPage):
+    def __init__(self, wizard):
+        WizardPage.__init__(self, wizard)
+        self.setTitle('EAC')
+        self.setSubTitle('Please open Exact Audio Copy.')
+        self.setButtonText(QtGui.QWizard.FinishButton, "Scan Another CD")
 
 
 if __name__ == "__main__":
