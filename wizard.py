@@ -141,6 +141,7 @@ class LookupCDPage(WizardPage):
         self.setTitle('Looking up CD in archive.org database')
 
         self.status_label = QtGui.QLabel('checking...')
+        self.status_label.setWordWrap(True)
 
         self.layout = QtGui.QVBoxLayout()
         self.layout.addWidget(self.status_label)
@@ -163,14 +164,16 @@ class LookupCDPage(WizardPage):
         
         print c
         obj = json.loads(c)
-        if len(obj) == 1:
-            self.show_single_result(obj)
+        if len(obj) > 0:
+            self.show_result(obj)
+        else:
+            self.status_label.setText('No match was found in the archive.org database. Please press the Next button to add your CD to your Music Locker.')
 
 
     def get_cover_image(self, metadata):
         img = None
         for f in metadata['files']:
-            print f
+            #print f
             if f['name'].endswith('_thumb.jpg'):
                 img = f['name']
                 break
@@ -182,39 +185,48 @@ class LookupCDPage(WizardPage):
         url = 'https://archive.org/metadata/'+itemid
         metadata = json.load(urllib.urlopen(url))
         #print metadata
-        md = {'img': self.get_cover_image(metadata),
-              'title': metadata['metadata']['title'],
-              'creator': metadata['metadata']['creator'],
+        md = {'img':     self.get_cover_image(metadata),
+              'title':   metadata['metadata'].get('title'),
+              'creator': metadata['metadata'].get('creator'),
+              'date':    metadata['metadata'].get('date')
              }
         return md
 
         
-    def show_single_result(self, obj):
-        self.status_label.setText('A match for this CD was found in our database')
-        item_id = obj[0][0]
-        md = self.fetch_ia_metadata(item_id)
-        if md['img'] is not None:
-            img_label = QtGui.QLabel()
-            img_url = "https://archive.org/download/{id}/{img}".format(id=item_id, img=md['img'])
-            print img_url
-            data = urllib.urlopen(img_url).read()
-            img = QtGui.QImage()
-            img.loadFromData(data)
-            img_label.setPixmap(QtGui.QPixmap(img).scaledToWidth(100))
-            self.layout.addWidget(img_label)
+    def show_result(self, obj):
+        scroll_area = QtGui.QScrollArea()
+        self.layout.addWidget(scroll_area)
+        widget = QtGui.QWidget()        
+        vbox = QtGui.QVBoxLayout(widget)
 
-        title_label = QtGui.QLabel(md['title'])
-        creator_label = QtGui.QLabel(md['creator'])
+        s = es = ''
+        if len(obj) > 1:
+            s = 's'; es = 'es'
 
-        self.layout.addWidget(title_label)
-        self.layout.addWidget(creator_label)
+        self.status_label.setText('{n} match{es} for this CD was found in our database'.format(n=len(obj), es=es))
+        for item in obj:
+            item_id = item[0]
+            md = self.fetch_ia_metadata(item_id)
+            button = QtGui.QRadioButton("{t}\n{c}\n{d}".format(t=md['title'], c=md['creator'], d=md['date']))
+            if md['img'] is not None:
+                img_label = QtGui.QLabel()
+                img_url = "https://archive.org/download/{id}/{img}".format(id=item_id, img=md['img'])
+                #print img_url
+                data = urllib.urlopen(img_url).read()
+                img = QtGui.QImage()
+                img.loadFromData(data)
+                #img_label.setPixmap(QtGui.QPixmap(img).scaledToWidth(100))
+                #self.layout.addWidget(img_label)
+                icon = QtGui.QIcon()
+                icon.addPixmap(QtGui.QPixmap(img))
+                button.setIcon(icon)
+                #button.setChecked(True)
+                button.setStyleSheet('QRadioButton {icon-size: 100px;}')
+            vbox.addWidget(button)
 
-        yes_button = QtGui.QRadioButton("This is my CD")
-        no_button  = QtGui.QRadioButton("My CD is different from the one shown above")
-        self.layout.addWidget(yes_button)
-        self.layout.addWidget(no_button)
-        yes_button.setChecked(True)
-
+        no_button  = QtGui.QRadioButton("My CD is different from the one{s} shown above".format(s=s))
+        vbox.addWidget(no_button)
+        scroll_area.setWidget(widget)
 
 
     def isComplete(self):
