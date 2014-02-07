@@ -196,7 +196,7 @@ class LookupCDPage(WizardPage):
         self.show_result(obj)
 
 
-    def get_cover_image(self, metadata):
+    def get_cover_icon(self, itemid, metadata):
         img = None
         for f in metadata['files']:
             #print f
@@ -204,14 +204,24 @@ class LookupCDPage(WizardPage):
                 img = f['name']
                 break
             #todo: set image if itemimage.jpg not found
-        return img
+
+        icon = None
+        if img is not None:
+            img_url = "https://archive.org/download/{id}/{img}".format(id=itemid, img=img)
+            #print img_url
+            data = urllib.urlopen(img_url).read()
+            qimg = QtGui.QImage()
+            qimg.loadFromData(data)
+            icon = QtGui.QIcon()
+            icon.addPixmap(QtGui.QPixmap(qimg))
+        return icon
 
 
     def fetch_ia_metadata(self, itemid):
         url = 'https://archive.org/metadata/'+itemid
         metadata = json.load(urllib.urlopen(url))
         #print metadata
-        md = {'img':     self.get_cover_image(metadata),
+        md = {'icon':    self.get_cover_icon(itemid, metadata),
               'title':   metadata['metadata'].get('title'),
               'creator': metadata['metadata'].get('creator'),
               'date':    metadata['metadata'].get('date')
@@ -244,20 +254,10 @@ class LookupCDPage(WizardPage):
             button = QtGui.QRadioButton("{t}\n{c}\n{d}".format(t=md['title'], c=md['creator'], d=md['date']))
             button.toggled.connect(self.radio_clicked)
 
-            if md['img'] is not None:
-                img_label = QtGui.QLabel()
-                img_url = "https://archive.org/download/{id}/{img}".format(id=item_id, img=md['img'])
-                #print img_url
-                data = urllib.urlopen(img_url).read()
-                img = QtGui.QImage()
-                img.loadFromData(data)
-                #img_label.setPixmap(QtGui.QPixmap(img).scaledToWidth(100))
-                #self.layout.addWidget(img_label)
-                icon = QtGui.QIcon()
-                icon.addPixmap(QtGui.QPixmap(img))
-                button.setIcon(icon)
-                #button.setChecked(True)
+            if md['icon'] is not None:
+                button.setIcon(md['icon'])
                 button.setStyleSheet('QRadioButton {icon-size: 100px;}')
+
             vbox.addWidget(button)
             self.radio_buttons.append(button)
 
