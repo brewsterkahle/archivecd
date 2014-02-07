@@ -4,28 +4,38 @@ from PyQt4 import QtCore, QtGui
 import sys
 import json
 import urllib
+import webbrowser
 
 
 # ArchiveWizard
 #_________________________________________________________________________________________
 class ArchiveWizard(QtGui.QWizard):
-    Page_Intro, Page_Scan_Drives, Page_Read_TOC, Page_Lookup_CD, Page_Mark_Added, Page_EAC = range(6)
+    Page_Intro, Page_Scan_Drives, Page_Read_TOC, Page_Lookup_CD, Page_Mark_Added, Page_EAC, Page_Select_EAC, Page_Verify_EAC, Page_Upload, Page_Verify_Upload= range(10)
+
     def __init__(self, parent=None):
         QtGui.QWizard.__init__(self, parent)
 
-        self.intro_page        = IntroPage(self)
-        self.scan_drives_page  = ScanDrivesPage(self)
-        self.read_toc_page     = ReadTOCPage(self)
-        self.lookup_cd_page    = LookupCDPage(self)
-        self.mark_added_page   = MarkAddedPage(self)
-        self.eac_page          = EACPage(self)
+        self.intro_page         = IntroPage(self)
+        self.scan_drives_page   = ScanDrivesPage(self)
+        self.read_toc_page      = ReadTOCPage(self)
+        self.lookup_cd_page     = LookupCDPage(self)
+        self.mark_added_page    = MarkAddedPage(self)
+        self.eac_page           = EACPage(self)
+        self.select_eac_page    = SelectEACPage(self)
+        self.verify_eac_page    = VerifyEACPage(self)
+        self.upload_page        = UploadPage(self)
+        self.verify_upload_page = VerifyUploadPage(self)
 
-        self.setPage(self.Page_Intro,       self.intro_page)
-        self.setPage(self.Page_Scan_Drives, self.scan_drives_page)
-        self.setPage(self.Page_Read_TOC,    self.read_toc_page)
-        self.setPage(self.Page_Lookup_CD,   self.lookup_cd_page)
-        self.setPage(self.Page_Mark_Added,  self.mark_added_page)
-        self.setPage(self.Page_EAC,    self.eac_page)
+        self.setPage(self.Page_Intro,         self.intro_page)
+        self.setPage(self.Page_Scan_Drives,   self.scan_drives_page)
+        self.setPage(self.Page_Read_TOC,      self.read_toc_page)
+        self.setPage(self.Page_Lookup_CD,     self.lookup_cd_page)
+        self.setPage(self.Page_Mark_Added,    self.mark_added_page)
+        self.setPage(self.Page_EAC,           self.eac_page)
+        self.setPage(self.Page_Select_EAC,    self.select_eac_page)
+        self.setPage(self.Page_Verify_EAC,    self.verify_eac_page)
+        self.setPage(self.Page_Upload,        self.upload_page)
+        self.setPage(self.Page_Verify_Upload, self.verify_upload_page)
 
 
     def done(self, x):
@@ -137,9 +147,9 @@ class ReadTOCPage(WizardPage):
             self.toc_label.setText('Unable to read disc')
             return
 
+
         self.toc_string = disc.toc_string
         self.disc_id    = disc.id
-
         print self.toc_string
         self.toc_label.setText(self.toc_string + '\n\nPress Next to check the archive.org database')
         self.is_complete = True
@@ -285,8 +295,83 @@ class EACPage(WizardPage):
     def __init__(self, wizard):
         WizardPage.__init__(self, wizard)
         self.setTitle('EAC')
-        self.setSubTitle('Please open Exact Audio Copy.')
+        self.setSubTitle('Please open Exact Audio Copy and copy the CD to your hard drive.')
+
+
+
+# SelectEACPage
+#_________________________________________________________________________________________
+class SelectEACPage(WizardPage):
+    def __init__(self, wizard):
+        WizardPage.__init__(self, wizard)
+        self.setTitle('EAC')
+        self.setSubTitle('Please select the folder containing the CD data copied using EAC.')
+        self.path = None
+        #self.setButtonText(QtGui.QWizard.FinishButton, "Scan Another CD")
+        layout = QtGui.QVBoxLayout()
+
+        def handle_button():
+            self.path = QtGui.QFileDialog.getExistingDirectory(None, 'Select EAC data folder', "::{20D04FE0-3AEA-1069-A2D8-08002B30309D}", QtGui.QFileDialog.ShowDirsOnly)
+            print self.path
+            self.emit(QtCore.SIGNAL("completeChanged()"))
+            self.label.setText("EAC Data dir = {p}\n\nClick Next to verify the data was copied by EAC correctly".format(p=self.path))
+
+        button = QtGui.QPushButton('Click to select EAC data folder')
+        button.clicked.connect(handle_button)
+        layout.addWidget(button)
+        self.label = QtGui.QLabel("")
+        self.label.setWordWrap(True)
+        layout.addWidget(self.label)
+        self.setLayout(layout)
+
+
+
+    def isComplete(self):
+        return self.path is not None
+
+
+# VerifyEACPage
+#_________________________________________________________________________________________
+class VerifyEACPage(WizardPage):
+    def __init__(self, wizard):
+        WizardPage.__init__(self, wizard)
+        self.setTitle('Verifying EAC data')
+        self.setSubTitle('The data was copied correctly. Click next to upload data to the Internet Archive')
+
+
+# UploadPage
+#_________________________________________________________________________________________
+class UploadPage(WizardPage):
+    def __init__(self, wizard):
+        WizardPage.__init__(self, wizard)
+        self.setTitle('Upload EAC data')
+        self.setSubTitle('Click the Open Web Browser button to launch the Internet Archive uploader. When the upload is complete, press the Next button.')
+
+        def handle_button():
+            webbrowser.open('https://archive.org/upload')
+            self.button_clicked = True
+            self.emit(QtCore.SIGNAL("completeChanged()"))
+
+        button = QtGui.QPushButton('Open Web Browser')
+        button.clicked.connect(handle_button)
+        layout = QtGui.QVBoxLayout()
+        layout.addWidget(button)
+        self.setLayout(layout)
+        self.button_clicked = False
+
+    def isComplete(self):
+        return self.button_clicked
+
+
+# VerifyUploadPage
+#_________________________________________________________________________________________
+class VerifyUploadPage(WizardPage):
+    def __init__(self, wizard):
+        WizardPage.__init__(self, wizard)
+        self.setTitle('Verifying Upload')
+        self.setSubTitle('The upload was successful. You may now scan another CD or quit the application.')
         self.setButtonText(QtGui.QWizard.FinishButton, "Scan Another CD")
+        self.setButtonText(QtGui.QWizard.CancelButton, "Quit")
 
 
 if __name__ == "__main__":
