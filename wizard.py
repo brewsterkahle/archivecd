@@ -195,6 +195,7 @@ class LookupCDPage(WizardPage):
             self.show_result(obj)
         else:
             self.status_label.setText('No match was found in the archive.org database. Please press the Next button to add your CD to your Music Locker.')
+            self.is_complete = True
 
 
     def get_cover_image(self, metadata):
@@ -263,11 +264,12 @@ class LookupCDPage(WizardPage):
 
 
     def nextId(self):
+        i = -1
         for i, radio in enumerate(self.radio_buttons):
             if radio.isChecked():
                 break
 
-        if i == (len(self.radio_buttons) - 1):
+        if (i == len(self.radio_buttons)-1) or (i == -1):
             return self.wizard.Page_EAC
         else:
             return self.wizard.Page_Mark_Added
