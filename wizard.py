@@ -178,6 +178,7 @@ class LookupCDPage(WizardPage):
 
 
     def initializePage(self):
+        self.is_complete = False
         url = 'http://dowewantit0.us.archive.org:5000/lookupCD?'
         url += urllib.urlencode({'sectors':   self.wizard.read_toc_page.toc_string,
                                  'mb_discid': self.wizard.read_toc_page.disc_id})
@@ -191,11 +192,8 @@ class LookupCDPage(WizardPage):
         
         print c
         obj = json.loads(c)
-        if len(obj) > 0:
-            self.show_result(obj)
-        else:
-            self.status_label.setText('No match was found in the archive.org database. Please press the Next button to add your CD to your Music Locker.')
-            self.is_complete = True
+
+        self.show_result(obj)
 
 
     def get_cover_image(self, metadata):
@@ -220,6 +218,11 @@ class LookupCDPage(WizardPage):
              }
         return md
 
+    
+    def radio_clicked(self, enabled):
+        self.is_complete = True
+        self.emit(QtCore.SIGNAL("completeChanged()"))
+
         
     def show_result(self, obj):
         widget = QtGui.QWidget()        
@@ -230,11 +233,17 @@ class LookupCDPage(WizardPage):
         if len(obj) > 1:
             s = 's'; es = 'es'
 
-        self.status_label.setText('{n} match{es} for this CD was found in our database'.format(n=len(obj), es=es))
+        if len(obj) == 0:
+            self.status_label.setText('No match was found in the archive.org database. Please press the Next button to add your CD to your Music Locker.')
+        else:
+            self.status_label.setText('{n} match{es} for this CD was found in our database'.format(n=len(obj), es=es))
+
         for item in obj:
             item_id = item[0]
             md = self.fetch_ia_metadata(item_id)
             button = QtGui.QRadioButton("{t}\n{c}\n{d}".format(t=md['title'], c=md['creator'], d=md['date']))
+            button.toggled.connect(self.radio_clicked)
+
             if md['img'] is not None:
                 img_label = QtGui.QLabel()
                 img_url = "https://archive.org/download/{id}/{img}".format(id=item_id, img=md['img'])
@@ -252,11 +261,15 @@ class LookupCDPage(WizardPage):
             vbox.addWidget(button)
             self.radio_buttons.append(button)
 
-        no_button  = QtGui.QRadioButton("My CD is different from the one{s} shown above".format(s=s))
-        vbox.addWidget(no_button)
-        self.radio_buttons.append(no_button)
+        if len(obj) > 0:
+            no_button  = QtGui.QRadioButton("My CD is different from the one{s} shown above".format(s=s))
+            no_button.toggled.connect(self.radio_clicked)
+            vbox.addWidget(no_button)
+            self.radio_buttons.append(no_button)
+        else:
+            self.is_complete = True
+
         self.scroll_area.setWidget(widget)
-        self.is_complete = True
 
 
     def isComplete(self):
