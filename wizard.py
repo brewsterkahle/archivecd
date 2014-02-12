@@ -179,16 +179,17 @@ class NetworkThread(QtCore.QThread):
 
     def run(self):
         url = 'http://dowewantit0.us.archive.org:5000/lookupCD?'
-        #url += urllib.urlencode({'sectors':   self.toc_string,
-        #                         'mb_discid': self.disc_id})
-        test_toc = '1 10 211995 182 22295 46610 71440 94720 108852 132800 155972 183515 200210'
-        url += urllib.urlencode({'sectors': test_toc})
+        url += urllib.urlencode({'sectors':   self.toc_string,
+                                 'mb_discid': self.disc_id})
+        #test_toc = '1 10 211995 182 22295 46610 71440 94720 108852 132800 155972 183515 200210'
+        #url += urllib.urlencode({'sectors': test_toc})
         print 'fetching ', url
         sys.stdout.flush()
 
         f = urllib.urlopen(url)
         c = f.read()
         print c
+        sys.stdout.flush()
         self.obj = json.loads(c)
 
         for item in self.obj:
@@ -407,7 +408,7 @@ class MusicBrainzPage(WizardPage):
             title   = release.get('title', '')
             artist  = release.get('artist-credit-phrase', '')
             country = release.get('country', '')
-            date    = release.get('date')
+            date    = release.get('date', '')
 
             button = QtGui.QRadioButton("{t}\n{a}\n{d} {c}".format(t=title, a=artist, d=date, c=country))
             button.toggled.connect(self.radio_clicked)
