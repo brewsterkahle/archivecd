@@ -5,6 +5,8 @@ import sys
 import json
 import urllib
 import webbrowser
+
+import discid
 import musicbrainzngs
 
 
@@ -93,7 +95,6 @@ class ScanDrivesPage(WizardPage):
         self.connect(self.combo, QtCore.SIGNAL("currentIndexChanged(const QString&)"),
                      self, QtCore.SIGNAL("completeChanged()"))
 
-
         layout.addWidget(self.combo)
         self.setLayout(layout)
 
@@ -147,7 +148,6 @@ class ReadTOCPage(WizardPage):
         cd_drive = self.wizard.scan_drives_page.combo.currentText()
         print cd_drive
         self.toc_label.setText('reading ' + cd_drive)
-        import discid
         try:
             disc = discid.read(str(cd_drive))
         except discid.disc.DiscError:
@@ -168,22 +168,22 @@ class ReadTOCPage(WizardPage):
 class NetworkThread(QtCore.QThread):
     taskFinished = QtCore.pyqtSignal()
 
-
     def __init__(self, toc_string, disc_id):
         QtCore.QThread.__init__(self)
 
         self.toc_string = toc_string
         self.disc_id    = disc_id
         self.obj        = None
+        self.metadata   = {}
 
 
     def run(self):
         url = 'http://dowewantit0.us.archive.org:5000/lookupCD?'
-        url += urllib.urlencode({'sectors':   self.toc_string,
-                                 'mb_discid': self.disc_id})
-        #test_toc = '1 10 211995 182 22295 46610 71440 94720 108852 132800 155972 183515 200210'
-        #url += urllib.urlencode({'sectors': test_toc})
-        print url
+        #url += urllib.urlencode({'sectors':   self.toc_string,
+        #                         'mb_discid': self.disc_id})
+        test_toc = '1 10 211995 182 22295 46610 71440 94720 108852 132800 155972 183515 200210'
+        url += urllib.urlencode({'sectors': test_toc})
+        print 'fetching ', url
         sys.stdout.flush()
 
         f = urllib.urlopen(url)
@@ -191,7 +191,47 @@ class NetworkThread(QtCore.QThread):
         print c
         self.obj = json.loads(c)
 
+        for item in self.obj:
+            item_id = item[0]
+            self.metadata[item_id] = self.fetch_ia_metadata(item_id)
+
         self.taskFinished.emit()
+
+
+    def fetch_ia_metadata(self, item_id):
+        url = 'https://archive.org/metadata/'+item_id
+        print 'fetching ', url
+        sys.stdout.flush()
+        metadata = json.load(urllib.urlopen(url))
+        #print metadata
+        md = {'qimg':    self.get_cover_qimg(item_id, metadata),
+              'title':   metadata['metadata'].get('title'),
+              'creator': metadata['metadata'].get('creator'),
+              'date':    metadata['metadata'].get('date')
+             }
+        return md
+
+
+    def get_cover_qimg(self, item_id, metadata):
+        img = None
+        for f in metadata['files']:
+            #print f
+            if f['name'].endswith('_thumb.jpg'):
+                img = f['name']
+                break
+            #todo: set image if itemimage.jpg not found
+
+        qimg = None
+        if img is not None:
+            img_url = "https://archive.org/download/{id}/{img}".format(id=item_id, img=img)
+            print 'loading image from ', img_url
+            sys.stdout.flush()
+            data = urllib.urlopen(img_url).read()
+            qimg = QtGui.QImage()
+            qimg.loadFromData(data)
+            #icon = QtGui.QIcon()
+            #icon.addPixmap(QtGui.QPixmap(qimg))
+        return qimg
 
 
 # LookupCDPage
@@ -231,48 +271,10 @@ class LookupCDPage(WizardPage):
         print 'network task done'
         sys.stdout.flush()
         self.progress_bar.hide()
-        self.show_result(self.network_lookup.obj)
+        self.show_result(self.network_lookup.obj, self.network_lookup.metadata)
 
 
-    def get_cover_icon(self, itemid, metadata):
-        img = None
-        for f in metadata['files']:
-            #print f
-            if f['name'].endswith('_thumb.jpg'):
-                img = f['name']
-                break
-            #todo: set image if itemimage.jpg not found
-
-        icon = None
-        if img is not None:
-            img_url = "https://archive.org/download/{id}/{img}".format(id=itemid, img=img)
-            #print img_url
-            data = urllib.urlopen(img_url).read()
-            qimg = QtGui.QImage()
-            qimg.loadFromData(data)
-            icon = QtGui.QIcon()
-            icon.addPixmap(QtGui.QPixmap(qimg))
-        return icon
-
-
-    def fetch_ia_metadata(self, itemid):
-        url = 'https://archive.org/metadata/'+itemid
-        metadata = json.load(urllib.urlopen(url))
-        #print metadata
-        md = {'icon':    self.get_cover_icon(itemid, metadata),
-              'title':   metadata['metadata'].get('title'),
-              'creator': metadata['metadata'].get('creator'),
-              'date':    metadata['metadata'].get('date')
-             }
-        return md
-
-
-    def radio_clicked(self, enabled):
-        self.is_complete = True
-        self.emit(QtCore.SIGNAL("completeChanged()"))
-
-
-    def show_result(self, obj):
+    def show_result(self, obj, metadata):
         widget = QtGui.QWidget()
         vbox = QtGui.QVBoxLayout(widget)
         self.radio_buttons = []
@@ -288,12 +290,16 @@ class LookupCDPage(WizardPage):
 
         for item in obj:
             item_id = item[0]
-            md = self.fetch_ia_metadata(item_id)
+            #md = self.fetch_ia_metadata(item_id)
+            md = metadata[item_id]
+
             button = QtGui.QRadioButton("{t}\n{c}\n{d}".format(t=md['title'], c=md['creator'], d=md['date']))
             button.toggled.connect(self.radio_clicked)
 
-            if md['icon'] is not None:
-                button.setIcon(md['icon'])
+            if md['qimg'] is not None:
+                icon = QtGui.QIcon()
+                icon.addPixmap(QtGui.QPixmap(md['qimg']))
+                button.setIcon(icon)
                 button.setStyleSheet('QRadioButton {icon-size: 100px;}')
 
             vbox.addWidget(button)
@@ -309,6 +315,11 @@ class LookupCDPage(WizardPage):
             self.emit(QtCore.SIGNAL("completeChanged()"))
 
         self.scroll_area.setWidget(widget)
+
+
+    def radio_clicked(self, enabled):
+        self.is_complete = True
+        self.emit(QtCore.SIGNAL("completeChanged()"))
 
 
     def isComplete(self):
