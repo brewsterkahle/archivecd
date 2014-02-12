@@ -132,6 +132,7 @@ class ReadTOCPage(WizardPage):
         self.toc_label = QtGui.QLabel('checking...')
         self.toc_string = None
         self.disc_id    = None
+        self.freedb_discid = None
         self.is_complete = False
 
         layout = QtGui.QVBoxLayout()
@@ -157,6 +158,7 @@ class ReadTOCPage(WizardPage):
 
         self.toc_string = disc.toc_string
         self.disc_id    = disc.id
+        self.freedb_discid  = disc.freedb_id
         print self.toc_string
         self.toc_label.setText(self.toc_string + '\n\nPress Next to check the archive.org database')
         self.is_complete = True
@@ -168,11 +170,12 @@ class ReadTOCPage(WizardPage):
 class NetworkThread(QtCore.QThread):
     taskFinished = QtCore.pyqtSignal()
 
-    def __init__(self, toc_string, disc_id):
+    def __init__(self, toc_string, disc_id, freedb_discid):
         QtCore.QThread.__init__(self)
 
         self.toc_string = toc_string
         self.disc_id    = disc_id
+        self.freedb_discid = freedb_discid
         self.obj        = None
         self.metadata   = {}
 
@@ -180,7 +183,8 @@ class NetworkThread(QtCore.QThread):
     def run(self):
         url = 'http://dowewantit0.us.archive.org:5000/lookupCD?'
         url += urllib.urlencode({'sectors':   self.toc_string,
-                                 'mb_discid': self.disc_id})
+                                 'mb_discid': self.disc_id,
+                                 'freedb_discid': self.freedb_discid})
         #test_toc = '1 10 211995 182 22295 46610 71440 94720 108852 132800 155972 183515 200210'
         #url += urllib.urlencode({'sectors': test_toc})
         print 'fetching ', url
@@ -263,7 +267,7 @@ class LookupCDPage(WizardPage):
 
     def initializePage(self):
         self.is_complete = False
-        self.network_lookup = NetworkThread(self.wizard.read_toc_page.toc_string, self.wizard.read_toc_page.disc_id)
+        self.network_lookup = NetworkThread(self.wizard.read_toc_page.toc_string, self.wizard.read_toc_page.disc_id, self.wizard.read_toc_page.freedb_discid)
         self.network_lookup.taskFinished.connect(self.task_finished)
         self.network_lookup.start()
 
