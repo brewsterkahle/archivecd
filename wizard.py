@@ -384,20 +384,28 @@ class MusicBrainzPage(WizardPage):
         self.is_complete = False
         disc_id = self.wizard.read_toc_page.disc_id
         #disc_id = '203b2nNoBhUpSWCAejk5rojPuOU-' #testing
+        #disc_id = 'OnYoxOJ8mAwXzTJcq42vROwOKSM-' #test cdstub
         musicbrainzngs.set_useragent(self.wizard.useragent, self.wizard.version, self.wizard.url)
         mb = musicbrainzngs.get_releases_by_discid(disc_id, includes=["artists"])
-        self.show_result(mb['disc'])
+        self.show_result(mb)
 
 
     def isComplete(self):
         return self.is_complete
 
 
-    def show_result(self, disc):
+    def show_result(self, mb):
         widget = QtGui.QWidget()
         vbox = QtGui.QVBoxLayout(widget)
         self.radio_buttons = []
-        num_releases = disc['release-count']
+
+        if 'disc' in mb:
+            releases = mb['disc']['release-list']
+        elif 'cdstub' in mb:
+            releases = [mb['cdstub']]
+
+        #num_releases = disc['release-count']
+        num_releases = len(releases)
 
         s = es = ''
         if num_releases > 1:
@@ -408,9 +416,11 @@ class MusicBrainzPage(WizardPage):
         else:
             self.status_label.setText('{n} match{es} for this CD was found in our database'.format(n=num_releases, es=es))
 
-        for release in disc['release-list']:
+        for release in releases:
             title   = release.get('title', '')
             artist  = release.get('artist-credit-phrase', '')
+            if artist == '':
+                artist = release.get('artist', '') #support cdstubs
             country = release.get('country', '')
             date    = release.get('date', '')
 
