@@ -162,6 +162,38 @@ class ReadTOCPage(WizardPage):
         self.is_complete = True
 
 
+
+# NetworkThread
+#_________________________________________________________________________________________
+class NetworkThread(QtCore.QThread):
+    taskFinished = QtCore.pyqtSignal()
+
+
+    def __init__(self, toc_string, disc_id):
+        QtCore.QThread.__init__(self)
+
+        self.toc_string = toc_string
+        self.disc_id    = disc_id
+        self.obj        = None
+
+
+    def run(self):
+        url = 'http://dowewantit0.us.archive.org:5000/lookupCD?'
+        url += urllib.urlencode({'sectors':   self.toc_string,
+                                 'mb_discid': self.disc_id})
+        #test_toc = '1 10 211995 182 22295 46610 71440 94720 108852 132800 155972 183515 200210'
+        #url += urllib.urlencode({'sectors': test_toc})
+        print url
+        sys.stdout.flush()
+
+        f = urllib.urlopen(url)
+        c = f.read()
+        print c
+        self.obj = json.loads(c)
+
+        self.taskFinished.emit()
+
+
 # LookupCDPage
 #_________________________________________________________________________________________
 class LookupCDPage(WizardPage):
@@ -175,6 +207,10 @@ class LookupCDPage(WizardPage):
         self.layout = QtGui.QVBoxLayout()
         self.layout.addWidget(self.status_label)
 
+        self.progress_bar = QtGui.QProgressBar(self)
+        self.progress_bar.setRange(0,0)
+        self.layout.addWidget(self.progress_bar)
+
         self.setLayout(self.layout)
 
         self.scroll_area = QtGui.QScrollArea()
@@ -186,21 +222,16 @@ class LookupCDPage(WizardPage):
 
     def initializePage(self):
         self.is_complete = False
-        url = 'http://dowewantit0.us.archive.org:5000/lookupCD?'
-        url += urllib.urlencode({'sectors':   self.wizard.read_toc_page.toc_string,
-                                 'mb_discid': self.wizard.read_toc_page.disc_id})
-        #test_toc = '1 10 211995 182 22295 46610 71440 94720 108852 132800 155972 183515 200210'
-        #url += urllib.urlencode({'sectors': test_toc})
-        print url
+        self.network_lookup = NetworkThread(self.wizard.read_toc_page.toc_string, self.wizard.read_toc_page.disc_id)
+        self.network_lookup.taskFinished.connect(self.task_finished)
+        self.network_lookup.start()
 
-        f = urllib.urlopen(url)
-        c = f.read()
-        self.status_label.setText('server returned:\n\n' + c)
 
-        print c
-        obj = json.loads(c)
-
-        self.show_result(obj)
+    def task_finished(self):
+        print 'network task done'
+        sys.stdout.flush()
+        self.progress_bar.hide()
+        self.show_result(self.network_lookup.obj)
 
 
     def get_cover_icon(self, itemid, metadata):
@@ -275,6 +306,7 @@ class LookupCDPage(WizardPage):
             self.radio_buttons.append(no_button)
         else:
             self.is_complete = True
+            self.emit(QtCore.SIGNAL("completeChanged()"))
 
         self.scroll_area.setWidget(widget)
 
