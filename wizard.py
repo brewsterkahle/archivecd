@@ -383,10 +383,17 @@ class MusicBrainzPage(WizardPage):
     def initializePage(self):
         self.is_complete = False
         disc_id = self.wizard.read_toc_page.disc_id
+
         #disc_id = '203b2nNoBhUpSWCAejk5rojPuOU-' #testing
         #disc_id = 'OnYoxOJ8mAwXzTJcq42vROwOKSM-' #test cdstub
+        #disc_id  = 'CvLoGpzPT2GKm1hx8vGEpP0lBwc-' #test 404
+
         musicbrainzngs.set_useragent(self.wizard.useragent, self.wizard.version, self.wizard.url)
-        mb = musicbrainzngs.get_releases_by_discid(disc_id, includes=["artists"])
+        try:
+            mb = musicbrainzngs.get_releases_by_discid(disc_id, includes=["artists"])
+        except:
+            mb = {}
+
         self.show_result(mb)
 
 
@@ -403,6 +410,8 @@ class MusicBrainzPage(WizardPage):
             releases = mb['disc']['release-list']
         elif 'cdstub' in mb:
             releases = [mb['cdstub']]
+        else:
+            releases = [] #404 case
 
         #num_releases = disc['release-count']
         num_releases = len(releases)
@@ -412,7 +421,7 @@ class MusicBrainzPage(WizardPage):
             s = 's'; es = 'es'
 
         if num_releases == 0:
-            self.status_label.setText('No match was found in the archive.org database. Please press the Next button to add your CD to your Music Locker.')
+            self.status_label.setText('No match was found in the MusicBrainz database. Please press the Next button to continue.')
         else:
             self.status_label.setText('{n} match{es} for this CD was found in our database'.format(n=num_releases, es=es))
 
