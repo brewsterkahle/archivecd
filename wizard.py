@@ -5,12 +5,17 @@ import sys
 import json
 import urllib
 import webbrowser
+import musicbrainzngs
 
 
 # ArchiveWizard
 #_________________________________________________________________________________________
 class ArchiveWizard(QtGui.QWizard):
-    Page_Intro, Page_Scan_Drives, Page_Read_TOC, Page_Lookup_CD, Page_Mark_Added, Page_EAC, Page_Select_EAC, Page_Verify_EAC, Page_Upload, Page_Verify_Upload= range(10)
+    Page_Intro, Page_Scan_Drives, Page_Read_TOC, Page_Lookup_CD, Page_Mark_Added, Page_MusicBrainz, Page_EAC, Page_Select_EAC, Page_Verify_EAC, Page_Upload, Page_Verify_Upload = range(11)
+
+    useragent = 'Internet Archive Music Locker'
+    version   = '0.1'
+    url       = 'https://archive.org'
 
     def __init__(self, parent=None):
         QtGui.QWizard.__init__(self, parent)
@@ -20,6 +25,7 @@ class ArchiveWizard(QtGui.QWizard):
         self.read_toc_page      = ReadTOCPage(self)
         self.lookup_cd_page     = LookupCDPage(self)
         self.mark_added_page    = MarkAddedPage(self)
+        self.musicbrainz_page   = MusicBrainzPage(self)
         self.eac_page           = EACPage(self)
         self.select_eac_page    = SelectEACPage(self)
         self.verify_eac_page    = VerifyEACPage(self)
@@ -31,6 +37,7 @@ class ArchiveWizard(QtGui.QWizard):
         self.setPage(self.Page_Read_TOC,      self.read_toc_page)
         self.setPage(self.Page_Lookup_CD,     self.lookup_cd_page)
         self.setPage(self.Page_Mark_Added,    self.mark_added_page)
+        self.setPage(self.Page_MusicBrainz,   self.musicbrainz_page)
         self.setPage(self.Page_EAC,           self.eac_page)
         self.setPage(self.Page_Select_EAC,    self.select_eac_page)
         self.setPage(self.Page_Verify_EAC,    self.verify_eac_page)
@@ -79,7 +86,7 @@ class ScanDrivesPage(WizardPage):
     def __init__(self, wizard):
         WizardPage.__init__(self, wizard)
         self.setTitle('Checking for CD Drives')
-        
+
         layout = QtGui.QVBoxLayout()
         self.combo = QtGui.QComboBox()
         self.combo.addItems(['(Choose CD Drive)'])
@@ -189,7 +196,7 @@ class LookupCDPage(WizardPage):
         f = urllib.urlopen(url)
         c = f.read()
         self.status_label.setText('server returned:\n\n' + c)
-        
+
         print c
         obj = json.loads(c)
 
@@ -228,14 +235,14 @@ class LookupCDPage(WizardPage):
              }
         return md
 
-    
+
     def radio_clicked(self, enabled):
         self.is_complete = True
         self.emit(QtCore.SIGNAL("completeChanged()"))
 
-        
+
     def show_result(self, obj):
-        widget = QtGui.QWidget()        
+        widget = QtGui.QWidget()
         vbox = QtGui.QVBoxLayout(widget)
         self.radio_buttons = []
 
@@ -283,7 +290,7 @@ class LookupCDPage(WizardPage):
                 break
 
         if (i == len(self.radio_buttons)-1) or (i == -1):
-            return self.wizard.Page_EAC
+            return self.wizard.Page_MusicBrainz
         else:
             return self.wizard.Page_Mark_Added
 
@@ -301,6 +308,88 @@ class MarkAddedPage(WizardPage):
 
     def nextId(self):
         return -1
+
+
+# MusicBrainzPage
+#_________________________________________________________________________________________
+class MusicBrainzPage(WizardPage):
+    def __init__(self, wizard):
+        WizardPage.__init__(self, wizard)
+        self.setTitle('Please help us find the MusicBrainz identifier for this CD by choosing a release from the list below')
+
+        self.status_label = QtGui.QLabel('checking...')
+        self.status_label.setWordWrap(True)
+
+        self.layout = QtGui.QVBoxLayout()
+        self.layout.addWidget(self.status_label)
+
+        self.setLayout(self.layout)
+
+        self.scroll_area = QtGui.QScrollArea()
+        self.layout.addWidget(self.scroll_area)
+
+        self.is_complete = False
+        self.radio_buttons = []
+
+
+    def initializePage(self):
+        self.is_complete = False
+        disc_id = self.wizard.read_toc_page.disc_id
+        #disc_id = '203b2nNoBhUpSWCAejk5rojPuOU-' #testing
+        musicbrainzngs.set_useragent(self.wizard.useragent, self.wizard.version, self.wizard.url)
+        mb = musicbrainzngs.get_releases_by_discid(disc_id, includes=["artists"])
+        self.show_result(mb['disc'])
+
+
+    def isComplete(self):
+        return self.is_complete
+
+
+    def show_result(self, disc):
+        widget = QtGui.QWidget()
+        vbox = QtGui.QVBoxLayout(widget)
+        self.radio_buttons = []
+        num_releases = disc['release-count']
+
+        s = es = ''
+        if num_releases > 1:
+            s = 's'; es = 'es'
+
+        if num_releases == 0:
+            self.status_label.setText('No match was found in the archive.org database. Please press the Next button to add your CD to your Music Locker.')
+        else:
+            self.status_label.setText('{n} match{es} for this CD was found in our database'.format(n=num_releases, es=es))
+
+        for release in disc['release-list']:
+            title   = release.get('title', '')
+            artist  = release.get('artist-credit-phrase', '')
+            country = release.get('country', '')
+            date    = release.get('date')
+
+            button = QtGui.QRadioButton("{t}\n{a}\n{d} {c}".format(t=title, a=artist, d=date, c=country))
+            button.toggled.connect(self.radio_clicked)
+
+            #if md['icon'] is not None:
+            #    button.setIcon(md['icon'])
+            #    button.setStyleSheet('QRadioButton {icon-size: 100px;}')
+
+            vbox.addWidget(button)
+            self.radio_buttons.append(button)
+
+        if num_releases > 0:
+            no_button  = QtGui.QRadioButton("My CD is different from the one{s} shown above".format(s=s))
+            no_button.toggled.connect(self.radio_clicked)
+            vbox.addWidget(no_button)
+            self.radio_buttons.append(no_button)
+        else:
+            self.is_complete = True
+
+        self.scroll_area.setWidget(widget)
+
+
+    def radio_clicked(self, enabled):
+        self.is_complete = True
+        self.emit(QtCore.SIGNAL("completeChanged()"))
 
 
 
