@@ -77,6 +77,37 @@ class IntroPage(WizardPage):
 
         self.setSubTitle('Please enter a CD and click the Next button')
 
+        layout = QtGui.QVBoxLayout()
+        pixmap = QtGui.QPixmap('logo.jpg')
+        img_label = QtGui.QLabel()
+        img_label.setPixmap(pixmap)
+        img_label.setAlignment(QtCore.Qt.AlignCenter)
+        layout.addWidget(img_label)
+
+        line1 = self.make_field('archive.org username:')
+        line2 = self.make_field('password:', echo_mode=QtGui.QLineEdit.Password)
+        layout.addLayout(line1)
+        layout.addLayout(line2)
+
+        self.setLayout(layout)
+
+
+    def make_field(self, label_text, echo_mode=QtGui.QLineEdit.Normal):
+        hbox = QtGui.QHBoxLayout()
+        label = QtGui.QLabel(label_text)
+        label.setFixedWidth(200)
+        label.setAlignment(QtCore.Qt.AlignRight)
+
+        field = QtGui.QLineEdit()
+        field.setFixedWidth(200)
+        field.setEchoMode(echo_mode)
+
+        hbox.addStretch(1)
+        hbox.addWidget(label)
+        hbox.addWidget(field)
+        hbox.addStretch(1)
+        return hbox
+
 
     def isComplete(self):
         return (sys.platform == 'win32')
