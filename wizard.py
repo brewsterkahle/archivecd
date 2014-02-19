@@ -447,14 +447,18 @@ class LookupCDPage(WizardPage):
         widget = QtGui.QWidget()
         vbox = QtGui.QVBoxLayout(widget)
         self.radio_buttons = []
+        is_ia = False
+        is_mb = False
 
         if self.wizard.ia_result:
             print self.wizard.ia_result
             self.status_label.setText('A match was found in the archive.org database. Please choose the correct match below.')
             metadata = self.wizard.ia_result
+            is_ia = True
         elif self.wizard.mb_result is not None:
             self.status_label.setText('This CD was not found in the archive.org database, so we will add it. First, please choose a match from the MusicBrainz database below.')
             metadata = self.wizard.mb_result
+            is_mb = True
 
         s = es = ''
         if len(metadata) > 1:
@@ -474,7 +478,19 @@ class LookupCDPage(WizardPage):
                 button.setIcon(icon)
                 button.setStyleSheet('QRadioButton {icon-size: 100px;}')
 
-            vbox.addWidget(button)
+            #vbox.addWidget(button)
+            hbox = QtGui.QHBoxLayout()
+            hbox.addWidget(button)
+            if is_ia:
+                label = QtGui.QLabel('<a href="https://archive.org/details/{id}"><img src="ia_logo.jpg"></a>'.format(id=item_id))
+                label.setOpenExternalLinks(True)
+                hbox.addWidget(label)
+            elif is_mb:
+                label = QtGui.QLabel('<a href="http://musicbrainz.org/release/{id}"><img src="mb_logo.png"></a>'.format(id=item_id))
+                label.setOpenExternalLinks(True)
+                hbox.addWidget(label)
+            vbox.addLayout(hbox)
+
             self.radio_buttons.append(button)
 
         if len(metadata) > 0:
@@ -588,7 +604,14 @@ class MusicBrainzPage(WizardPage):
                 button.setIcon(icon)
                 button.setStyleSheet('QRadioButton {icon-size: 100px;}')
 
-            vbox.addWidget(button)
+            #vbox.addWidget(button)
+            hbox = QtGui.QHBoxLayout()
+            hbox.addWidget(button)
+            label = QtGui.QLabel('<a href="http://musicbrainz.org/release/{id}"><img src="mb_logo.png"></a>'.format(id=item_id))
+            label.setOpenExternalLinks(True)
+            hbox.addWidget(label)
+            vbox.addLayout(hbox)
+
             self.radio_buttons.append(button)
 
         if len(metadata) > 0:
