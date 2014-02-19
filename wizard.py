@@ -63,6 +63,50 @@ class ArchiveWizard(QtGui.QWizard):
             QtGui.QApplication.quit()
 
 
+    def create_metadata_widget(self, page, metadata, is_ia=False, is_mb=False):
+        '''Create a widget with albums from the given metadata array. Return both the
+        widget and a list of radio buttons. Wire the radio button toggle event to the
+        "radio_clicked" method of the given page.'''
+
+        widget = QtGui.QWidget()
+        vbox = QtGui.QVBoxLayout(widget)
+        radio_buttons = []
+
+        for md in metadata:
+            item_id = md['id']
+            button = QtGui.QRadioButton("{t}\n{a}\n{d} {c}".format(t=md['title'], a=md['creator'], d=md['date'], c=md.get('country', '')))
+            button.toggled.connect(page.radio_clicked)
+
+            if md['qimg'] is not None:
+                icon = QtGui.QIcon()
+                icon.addPixmap(QtGui.QPixmap(md['qimg']))
+                button.setIcon(icon)
+                button.setStyleSheet('QRadioButton {icon-size: 100px;}')
+
+            #vbox.addWidget(button)
+            hbox = QtGui.QHBoxLayout()
+            hbox.addWidget(button)
+            if is_ia:
+                label = QtGui.QLabel('<a href="https://archive.org/details/{id}"><img src="ia_logo.jpg"></a>'.format(id=item_id))
+                label.setOpenExternalLinks(True)
+                hbox.addWidget(label)
+            elif is_mb:
+                label = QtGui.QLabel('<a href="http://musicbrainz.org/release/{id}"><img src="mb_logo.png"></a>'.format(id=item_id))
+                label.setOpenExternalLinks(True)
+                hbox.addWidget(label)
+            vbox.addLayout(hbox)
+
+            radio_buttons.append(button)
+
+        if len(metadata) > 0:
+            no_button  = QtGui.QRadioButton("My CD is not shown above")
+            no_button.toggled.connect(page.radio_clicked)
+            vbox.addWidget(no_button)
+            radio_buttons.append(no_button)
+
+        return widget, radio_buttons
+
+
 # WizardPage
 #_________________________________________________________________________________________
 class WizardPage(QtGui.QWizardPage):
@@ -444,12 +488,8 @@ class LookupCDPage(WizardPage):
 
 
     def show_result(self):
-        widget = QtGui.QWidget()
-        vbox = QtGui.QVBoxLayout(widget)
-        self.radio_buttons = []
         is_ia = False
         is_mb = False
-
         if self.wizard.ia_result:
             print self.wizard.ia_result
             self.status_label.setText('A match was found in the archive.org database. Please choose the correct match below.')
@@ -460,45 +500,9 @@ class LookupCDPage(WizardPage):
             metadata = self.wizard.mb_result
             is_mb = True
 
-        s = es = ''
-        if len(metadata) > 1:
-            s = 's'; es = 'es'
+        widget, self.radio_buttons = self.wizard.create_metadata_widget(self, metadata, is_ia=is_ia, is_mb=is_mb)
 
-        for md in metadata:
-            print md
-            sys.stdout.flush()
-            item_id = md['id']
-
-            button = QtGui.QRadioButton("{t}\n{a}\n{d} {c}".format(t=md['title'], a=md['creator'], d=md['date'], c=md.get('country', '')))
-            button.toggled.connect(self.radio_clicked)
-
-            if md['qimg'] is not None:
-                icon = QtGui.QIcon()
-                icon.addPixmap(QtGui.QPixmap(md['qimg']))
-                button.setIcon(icon)
-                button.setStyleSheet('QRadioButton {icon-size: 100px;}')
-
-            #vbox.addWidget(button)
-            hbox = QtGui.QHBoxLayout()
-            hbox.addWidget(button)
-            if is_ia:
-                label = QtGui.QLabel('<a href="https://archive.org/details/{id}"><img src="ia_logo.jpg"></a>'.format(id=item_id))
-                label.setOpenExternalLinks(True)
-                hbox.addWidget(label)
-            elif is_mb:
-                label = QtGui.QLabel('<a href="http://musicbrainz.org/release/{id}"><img src="mb_logo.png"></a>'.format(id=item_id))
-                label.setOpenExternalLinks(True)
-                hbox.addWidget(label)
-            vbox.addLayout(hbox)
-
-            self.radio_buttons.append(button)
-
-        if len(metadata) > 0:
-            no_button  = QtGui.QRadioButton("My CD is different from the one{s} shown above".format(s=s))
-            no_button.toggled.connect(self.radio_clicked)
-            vbox.addWidget(no_button)
-            self.radio_buttons.append(no_button)
-        else:
+        if len(metadata) == 0:
             self.is_complete = True
             self.emit(QtCore.SIGNAL("completeChanged()"))
 
@@ -578,48 +582,11 @@ class MusicBrainzPage(WizardPage):
 
 
     def initializePage(self):
-        self.is_complete           = False
-
-        widget = QtGui.QWidget()
-        vbox = QtGui.QVBoxLayout(widget)
-        self.radio_buttons = []
-
         metadata = self.wizard.mb_result
+        widget, self.radio_buttons = self.wizard.create_metadata_widget(self, metadata, is_mb=True)
 
-        s = es = ''
-        if len(metadata) > 1:
-            s = 's'; es = 'es'
-
-        for md in metadata:
-            print md
-            sys.stdout.flush()
-            item_id = md['id']
-
-            button = QtGui.QRadioButton("{t}\n{a}\n{d} {c}".format(t=md['title'], a=md['creator'], d=md['date'], c=md.get('country', '')))
-            button.toggled.connect(self.radio_clicked)
-
-            if md['qimg'] is not None:
-                icon = QtGui.QIcon()
-                icon.addPixmap(QtGui.QPixmap(md['qimg']))
-                button.setIcon(icon)
-                button.setStyleSheet('QRadioButton {icon-size: 100px;}')
-
-            #vbox.addWidget(button)
-            hbox = QtGui.QHBoxLayout()
-            hbox.addWidget(button)
-            label = QtGui.QLabel('<a href="http://musicbrainz.org/release/{id}"><img src="mb_logo.png"></a>'.format(id=item_id))
-            label.setOpenExternalLinks(True)
-            hbox.addWidget(label)
-            vbox.addLayout(hbox)
-
-            self.radio_buttons.append(button)
-
-        if len(metadata) > 0:
-            no_button  = QtGui.QRadioButton("My CD is different from the one{s} shown above".format(s=s))
-            no_button.toggled.connect(self.radio_clicked)
-            vbox.addWidget(no_button)
-            self.radio_buttons.append(no_button)
-        else:
+        self.is_complete = False
+        if len(metadata) == 0:
             self.is_complete = True
             self.emit(QtCore.SIGNAL("completeChanged()"))
 
