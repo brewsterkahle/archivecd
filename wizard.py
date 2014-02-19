@@ -426,6 +426,8 @@ class LookupCDPage(WizardPage):
 
         if self.scroll_area:
             self.scroll_area.setParent(None)
+
+        self.radio_buttons = []
         self.scroll_area = QtGui.QScrollArea()
         self.layout.addWidget(self.scroll_area)
 
