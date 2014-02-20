@@ -13,7 +13,6 @@ import musicbrainzngs
 # ArchiveWizard
 #_________________________________________________________________________________________
 class ArchiveWizard(QtGui.QWizard):
-    #Page_Intro, Page_Scan_Drives, Page_Read_TOC, Page_Lookup_CD, Page_Mark_Added, Page_MusicBrainz, Page_EAC, Page_Select_EAC, Page_Verify_EAC, Page_Upload, Page_Verify_Upload = range(11)
     Page_Intro, Page_Scan_Drives, Page_Lookup_CD, Page_Mark_Added, Page_MusicBrainz, Page_EAC, Page_Select_EAC, Page_Verify_EAC, Page_Upload, Page_Verify_Upload = range(10)
 
     useragent = 'Internet Archive Music Locker'
@@ -23,37 +22,21 @@ class ArchiveWizard(QtGui.QWizard):
     def __init__(self, parent=None):
         QtGui.QWizard.__init__(self, parent)
 
-        self.toc_string    = None
-        self.disc_id       = None
-        self.freedb_discid = None
-
-        self.ia_result     = None
-        self.mb_result     = None
-        self.freedb_result = None
+        self.reset()
 
         self.intro_page         = IntroPage(self)
         self.scan_drives_page   = ScanDrivesPage(self)
-        #self.read_toc_page      = ReadTOCPage(self)
         self.lookup_cd_page     = LookupCDPage(self)
         self.mark_added_page    = MarkAddedPage(self)
         self.musicbrainz_page   = MusicBrainzPage(self)
         self.eac_page           = EACPage(self)
-        #self.select_eac_page    = SelectEACPage(self)
-        #self.verify_eac_page    = VerifyEACPage(self)
-        #self.upload_page        = UploadPage(self)
-        #self.verify_upload_page = VerifyUploadPage(self)
 
         self.setPage(self.Page_Intro,         self.intro_page)
         self.setPage(self.Page_Scan_Drives,   self.scan_drives_page)
-        #self.setPage(self.Page_Read_TOC,      self.read_toc_page)
         self.setPage(self.Page_Lookup_CD,     self.lookup_cd_page)
         self.setPage(self.Page_Mark_Added,    self.mark_added_page)
         self.setPage(self.Page_MusicBrainz,   self.musicbrainz_page)
         self.setPage(self.Page_EAC,           self.eac_page)
-        #self.setPage(self.Page_Select_EAC,    self.select_eac_page)
-        #self.setPage(self.Page_Verify_EAC,    self.verify_eac_page)
-        #self.setPage(self.Page_Upload,        self.upload_page)
-        #self.setPage(self.Page_Verify_Upload, self.verify_upload_page)
 
 
     def done(self, x):
@@ -61,6 +44,17 @@ class ArchiveWizard(QtGui.QWizard):
             self.restart()
         else:
             QtGui.QApplication.quit()
+
+
+    def reset(self):
+        self.toc_string    = None
+        self.disc_id       = None
+        self.freedb_discid = None
+        self.ia_result     = None
+        self.mb_result     = None
+        self.freedb_result = None
+        self.ia_chosen     = None
+        self.mb_chosen     = None
 
 
     def create_metadata_widget(self, page, metadata, is_ia=False, is_mb=False):
@@ -184,6 +178,8 @@ class ScanDrivesPage(WizardPage):
         self.scanned_drives = False
 
     def initializePage(self):
+        #After the first CD is scanned, this page becomes the first page of the wizard
+        self.wizard.reset()
         if self.scanned_drives:
             return
 
@@ -209,50 +205,6 @@ class ScanDrivesPage(WizardPage):
 
     def isComplete(self):
         return (self.combo.currentIndex() != 0)
-
-
-
-# ReadTOCPage
-#_________________________________________________________________________________________
-class ReadTOCPage(WizardPage):
-    def __init__(self, wizard):
-        WizardPage.__init__(self, wizard)
-        self.setTitle('Reading CD Table of Contents')
-
-        self.toc_label = QtGui.QLabel('checking...')
-        self.toc_string = None
-        self.disc_id    = None
-        self.freedb_discid = None
-        self.is_complete = False
-
-        layout = QtGui.QVBoxLayout()
-        layout.addWidget(self.toc_label)
-
-        self.setLayout(layout)
-
-
-    def isComplete(self):
-        return self.is_complete
-
-
-    def initializePage(self):
-        cd_drive = self.wizard.scan_drives_page.combo.currentText()
-        print cd_drive
-        self.toc_label.setText('reading ' + cd_drive)
-        try:
-            disc = discid.read(str(cd_drive))
-        except discid.disc.DiscError:
-            self.toc_label.setText('Unable to read disc')
-            return
-
-
-        self.toc_string = disc.toc_string
-        self.disc_id    = disc.id
-        self.freedb_discid  = disc.freedb_id
-        print self.toc_string
-        self.toc_label.setText(self.toc_string + '\n\nPress Next to check the archive.org database')
-        self.is_complete = True
-
 
 
 # BackgroundThread
@@ -488,19 +440,19 @@ class LookupCDPage(WizardPage):
 
 
     def show_result(self):
-        is_ia = False
-        is_mb = False
+        self.is_ia = False
+        self.is_mb = False
         if self.wizard.ia_result:
             print self.wizard.ia_result
             self.status_label.setText('A match was found in the archive.org database. Please choose the correct match below.')
             metadata = self.wizard.ia_result
-            is_ia = True
+            self.is_ia = True
         elif self.wizard.mb_result is not None:
             self.status_label.setText('This CD was not found in the archive.org database, so we will add it. First, please choose a match from the MusicBrainz database below.')
             metadata = self.wizard.mb_result
-            is_mb = True
+            self.is_mb = True
 
-        widget, self.radio_buttons = self.wizard.create_metadata_widget(self, metadata, is_ia=is_ia, is_mb=is_mb)
+        widget, self.radio_buttons = self.wizard.create_metadata_widget(self, metadata, is_ia=self.is_ia, is_mb=self.is_mb)
 
         if len(metadata) == 0:
             self.is_complete = True
@@ -510,6 +462,22 @@ class LookupCDPage(WizardPage):
 
 
     def radio_clicked(self, enabled):
+        i = -1
+        for i, radio in enumerate(self.radio_buttons):
+            if radio.isChecked():
+                break
+
+        if (i != len(self.radio_buttons)-1) and (i != -1):
+            if self.is_ia:
+                self.wizard.ia_chosen = i
+            elif self.is_mb:
+                self.wizard.mb_chosen = i
+        else:
+            if self.is_ia:
+                self.wizard.ia_chosen = None
+            elif self.is_mb:
+                self.wizard.mb_chosen = None
+
         self.is_complete = True
         self.emit(QtCore.SIGNAL("completeChanged()"))
 
@@ -594,114 +562,22 @@ class MusicBrainzPage(WizardPage):
 
 
     def radio_clicked(self, enabled):
+        i = -1
+        for i, radio in enumerate(self.radio_buttons):
+            if radio.isChecked():
+                break
+
+        if (i != len(self.radio_buttons)-1) and (i != -1):
+            self.wizard.mb_chosen = i
+        else:
+            self.wizard.mb_chosen = None
+
         self.is_complete = True
         self.emit(QtCore.SIGNAL("completeChanged()"))
 
 
     def isComplete(self):
         return self.is_complete
-
-
-# MusicBrainzPageOld
-#_________________________________________________________________________________________
-class MusicBrainzPageOld(WizardPage):
-    def __init__(self, wizard):
-        WizardPage.__init__(self, wizard)
-        self.setTitle('Please help us find the MusicBrainz identifier for this CD by choosing a release from the list below')
-
-        self.status_label = QtGui.QLabel('checking...')
-        self.status_label.setWordWrap(True)
-
-        self.layout = QtGui.QVBoxLayout()
-        self.layout.addWidget(self.status_label)
-
-        self.setLayout(self.layout)
-
-        self.scroll_area = QtGui.QScrollArea()
-        self.layout.addWidget(self.scroll_area)
-
-        self.is_complete = False
-        self.radio_buttons = []
-
-
-    def initializePage(self):
-        self.is_complete = False
-        disc_id = self.wizard.read_toc_page.disc_id
-
-        #disc_id = '203b2nNoBhUpSWCAejk5rojPuOU-' #testing
-        #disc_id = 'OnYoxOJ8mAwXzTJcq42vROwOKSM-' #test cdstub
-        #disc_id  = 'CvLoGpzPT2GKm1hx8vGEpP0lBwc-' #test 404
-
-        musicbrainzngs.set_useragent(self.wizard.useragent, self.wizard.version, self.wizard.url)
-        try:
-            mb = musicbrainzngs.get_releases_by_discid(disc_id, includes=["artists"])
-        except:
-            mb = {}
-
-        self.show_result(mb)
-
-
-    def isComplete(self):
-        return self.is_complete
-
-
-    def show_result(self, mb):
-        widget = QtGui.QWidget()
-        vbox = QtGui.QVBoxLayout(widget)
-        self.radio_buttons = []
-
-        if 'disc' in mb:
-            releases = mb['disc']['release-list']
-        elif 'cdstub' in mb:
-            releases = [mb['cdstub']]
-        else:
-            releases = [] #404 case
-
-        #num_releases = disc['release-count']
-        num_releases = len(releases)
-
-        s = es = ''
-        if num_releases > 1:
-            s = 's'; es = 'es'
-
-        if num_releases == 0:
-            self.status_label.setText('No match was found in the MusicBrainz database. Please press the Next button to continue.')
-        else:
-            self.status_label.setText('{n} match{es} for this CD was found in our database'.format(n=num_releases, es=es))
-
-        for release in releases:
-            title   = release.get('title', '')
-            artist  = release.get('artist-credit-phrase', '')
-            if artist == '':
-                artist = release.get('artist', '') #support cdstubs
-            country = release.get('country', '')
-            date    = release.get('date', '')
-
-            button = QtGui.QRadioButton("{t}\n{a}\n{d} {c}".format(t=title, a=artist, d=date, c=country))
-            button.toggled.connect(self.radio_clicked)
-
-            #if md['icon'] is not None:
-            #    button.setIcon(md['icon'])
-            #    button.setStyleSheet('QRadioButton {icon-size: 100px;}')
-
-            vbox.addWidget(button)
-            self.radio_buttons.append(button)
-
-        if num_releases > 0:
-            no_button  = QtGui.QRadioButton("My CD is different from the one{s} shown above".format(s=s))
-            no_button.toggled.connect(self.radio_clicked)
-            vbox.addWidget(no_button)
-            self.radio_buttons.append(no_button)
-        else:
-            self.is_complete = True
-
-        self.scroll_area.setWidget(widget)
-
-
-    def radio_clicked(self, enabled):
-        self.is_complete = True
-        self.emit(QtCore.SIGNAL("completeChanged()"))
-
 
 
 # EACPage
@@ -711,25 +587,44 @@ class EACPage(WizardPage):
         WizardPage.__init__(self, wizard)
         self.setTitle('EAC')
         self.setSubTitle('Please open Exact Audio Copy and copy the CD to your hard drive. When you are finished, please click the Upload button to add your CD to your Music Locker.')
+        self.url = 'https://archive.org/upload'
 
         def handle_button():
-            webbrowser.open('https://archive.org/upload')
+            webbrowser.open(self.url)
             self.button_clicked = True
             self.emit(QtCore.SIGNAL("completeChanged()"))
 
-        button = QtGui.QPushButton('Open Web Browser')
-        button.clicked.connect(handle_button)
+        self.button = QtGui.QPushButton('Open Web Browser')
+        self.button.clicked.connect(handle_button)
         layout = QtGui.QVBoxLayout()
-        layout.addWidget(button)
+        layout.addWidget(self.button)
         self.setLayout(layout)
         self.button_clicked = False
         self.setButtonText(QtGui.QWizard.FinishButton, "Scan Another CD")
 
-    def nextId(self):
-        return -1
 
     def initializePage(self):
         self.button_clicked = False
+
+        print 'chosen ia=', self.wizard.ia_chosen, ' mb=', self.wizard.mb_chosen
+        sys.stdout.flush()
+
+        self.url = 'https://archive.org/upload'
+        if self.wizard.mb_chosen is not None:
+            md = self.wizard.mb_result[self.wizard.mb_chosen]
+            args = {}
+            for key in ['title', 'creator', 'date']:
+                if key in md:
+                    args[key] = md[key]
+            args['soruce'] = 'CD'
+            args['external-identifier'] = 'urn:mb_release_id:'+md['id']
+            args['test_item'] = 1
+            self.url += '?' + urllib.urlencode(args)
+
+
+    def nextId(self):
+        return -1
+
 
     def isComplete(self):
         return self.button_clicked
