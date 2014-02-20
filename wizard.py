@@ -624,7 +624,7 @@ class EACPage(WizardPage):
             for key in ['title', 'creator', 'date']:
                 if key in md:
                     args[key] = md[key]
-            args['soruce'] = 'CD'
+            args['source'] = 'CD'
             args['external-identifier'] = 'urn:mb_release_id:'+md['id']
             args['test_item'] = 1
             self.url += '?' + urllib.urlencode(args)
