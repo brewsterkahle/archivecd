@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 from PyQt4 import QtCore, QtGui
+import ctypes
 import sys
 import json
 import urllib
@@ -518,6 +519,13 @@ class MarkAddedPage(WizardPage):
         self.setSubTitle('This CD was added to your Music Locker')
         self.setFinalPage(True)
         self.setButtonText(QtGui.QWizard.FinishButton, "Scan Another CD")
+
+
+    def initializePage(self):
+        cd_drive = self.wizard.scan_drives_page.combo.currentText()
+        ctypes.windll.WINMM.mciSendStringW(u"open {drive} type cdaudio alias cdrom".format(drive=cd_drive), None, 0, None)
+        ctypes.windll.WINMM.mciSendStringW(u"set cdrom door open", None, 0, None)
+
 
     def nextId(self):
         return -1
