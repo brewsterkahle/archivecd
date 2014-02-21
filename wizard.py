@@ -437,7 +437,8 @@ class LookupCDPage(WizardPage):
         print 'background task done'
         sys.stdout.flush()
         self.progress_bar.hide()
-        self.show_result()
+        if self.wizard.toc_string is not None:
+            self.show_result()
 
 
     def show_result(self):
