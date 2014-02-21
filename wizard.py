@@ -181,7 +181,14 @@ class ScanDrivesPage(WizardPage):
     def initializePage(self):
         #After the first CD is scanned, this page becomes the first page of the wizard
         self.wizard.reset()
+
         if self.scanned_drives:
+            #If we have already scanned the drives, then we have already processed a
+            #CD. Eject the current CD so the user can easily insert a new one, and
+            #do not scan the cd drives again.
+            cd_drive = self.wizard.scan_drives_page.combo.currentText()
+            ctypes.windll.WINMM.mciSendStringW(u"open {drive} type cdaudio alias cdrom".format(drive=cd_drive), None, 0, None)
+            ctypes.windll.WINMM.mciSendStringW(u"set cdrom door open", None, 0, None)
             return
 
         #based on picard/util/cdrom.py
@@ -522,12 +529,6 @@ class MarkAddedPage(WizardPage):
         self.setButtonText(QtGui.QWizard.FinishButton, "Scan Another CD")
 
 
-    def initializePage(self):
-        cd_drive = self.wizard.scan_drives_page.combo.currentText()
-        ctypes.windll.WINMM.mciSendStringW(u"open {drive} type cdaudio alias cdrom".format(drive=cd_drive), None, 0, None)
-        ctypes.windll.WINMM.mciSendStringW(u"set cdrom door open", None, 0, None)
-
-
     def nextId(self):
         return -1
 
@@ -665,7 +666,6 @@ class SelectEACPage(WizardPage):
         self.setLayout(layout)
 
 
-
     def isComplete(self):
         return self.path is not None
 
@@ -698,6 +698,7 @@ class UploadPage(WizardPage):
         layout.addWidget(button)
         self.setLayout(layout)
         self.button_clicked = False
+
 
     def isComplete(self):
         return self.button_clicked
