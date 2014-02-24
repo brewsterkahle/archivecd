@@ -604,7 +604,7 @@ class EACPage(WizardPage):
             self.button_clicked = True
             self.emit(QtCore.SIGNAL("completeChanged()"))
 
-        self.button = QtGui.QPushButton('Open Web Browser')
+        self.button = QtGui.QPushButton('Open Web Browser to Upload to Music Locker')
         self.button.clicked.connect(handle_button)
         layout = QtGui.QVBoxLayout()
         layout.addWidget(self.button)
