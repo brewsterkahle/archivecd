@@ -620,16 +620,19 @@ class EACPage(WizardPage):
         sys.stdout.flush()
 
         self.url = 'https://archive.org/upload'
+        args = {'collection':          'acdc',
+                'source':              'CD',
+                'test_item':           1,
+               }
+
         if self.wizard.mb_chosen is not None:
             md = self.wizard.mb_result[self.wizard.mb_chosen]
-            args = {}
             for key in ['title', 'creator', 'date']:
                 if key in md:
                     args[key] = md[key]
-            args['source'] = 'CD'
             args['external-identifier'] = 'urn:mb_release_id:'+md['id']
-            args['test_item'] = 1
-            self.url += '?' + urllib.urlencode(args)
+
+        self.url += '?' + urllib.urlencode(args)
 
 
     def nextId(self):
