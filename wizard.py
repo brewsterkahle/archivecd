@@ -291,7 +291,8 @@ class BackgroundThread(QtCore.QThread):
         url = 'http://dowewantit0.us.archive.org:5000/lookupCD?'
         url += urllib.urlencode({'sectors':   self.wizard.toc_string,
                                  'mb_discid': self.wizard.disc_id,
-                                 'freedb_discid': self.wizard.freedb_discid})
+                                 'freedb_discid': self.wizard.freedb_discid,
+                                 'version': 2})
         #test_toc = '1 10 211995 182 22295 46610 71440 94720 108852 132800 155972 183515 200210'
         #url += urllib.urlencode({'sectors': test_toc})
         print 'fetching ', url
@@ -303,8 +304,8 @@ class BackgroundThread(QtCore.QThread):
         sys.stdout.flush()
         obj = json.loads(c)
         metadata   = []
-        for item in obj:
-            item_id = item[0]
+        for item in obj['archive.org']['releases']:
+            item_id = item['id']
             metadata.append(self.fetch_ia_metadata(item_id))
         return obj, metadata
 
