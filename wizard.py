@@ -205,6 +205,10 @@ class ScanDrivesPage(WizardPage):
                     cd_drives.append(drive)
         self.combo.addItems(cd_drives)
 
+        if 2 == self.combo.count():
+            #only one drive, just select it
+            self.combo.setCurrentIndex(1)
+
         #Once we have finished logging in, do not ask users to log in again.
         #Make this page the new first page of the wizard.
         self.wizard.setStartId(self.wizard.Page_Scan_Drives)
@@ -389,7 +393,6 @@ class BackgroundThread(QtCore.QThread):
                      }
 
             description = self.get_mb_track_list(release)
-            print 'desc', description
             if description:
                 md_obj['description'] = description
 
@@ -409,7 +412,6 @@ class BackgroundThread(QtCore.QThread):
             return None
 
         for track in track_list:
-            print 'track', track
             recording = track.get('recording')
             if recording:
                 milliseconds = recording.get('length')
