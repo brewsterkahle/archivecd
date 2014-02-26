@@ -358,7 +358,7 @@ class BackgroundThread(QtCore.QThread):
 
         musicbrainzngs.set_useragent(self.wizard.useragent, self.wizard.version, self.wizard.url)
         try:
-            mb = musicbrainzngs.get_releases_by_discid(disc_id, includes=["artists"])
+            mb = musicbrainzngs.get_releases_by_discid(disc_id, includes=["artists", "recordings"])
         except:
             mb = {}
         print mb
@@ -380,14 +380,45 @@ class BackgroundThread(QtCore.QThread):
             country = release.get('country', '')
             date    = release.get('date', '')
 
-            metadata.append({'id':      id,
-                             'qimg':    None,
-                             'title':   title,
-                             'creator': artist,
-                             'date':    date,
-                             'country': country,
-             })
+            md_obj = {'id':      id,
+                      'qimg':    None,
+                      'title':   title,
+                      'creator': artist,
+                      'date':    date,
+                      'country': country,
+                     }
+
+            description = self.get_mb_track_list(release)
+            print 'desc', description
+            if description:
+                md_obj['description'] = description
+
+            metadata.append(md_obj)
+
         return metadata
+
+
+    def get_mb_track_list(self, release):
+        description = ''
+        medium_list = release.get('medium-list')
+        if not (medium_list and medium_list[0]):
+            return None
+
+        track_list = medium_list[0].get('track-list')
+        if not track_list:
+            return None
+
+        for track in track_list:
+            print 'track', track
+            recording = track.get('recording')
+            if recording:
+                milliseconds = recording.get('length')
+                seconds = float(milliseconds)/1000.0
+                length = '{m}:{s:02d}'.format(m=int(seconds/60), s=int(seconds%60))
+                description += '{n}. {t} {l}<br/>'.format(n=track.get('number'), t=recording.get('title'), l=length)
+
+        return description
+
 
 
 # LookupCDPage
@@ -628,7 +659,7 @@ class EACPage(WizardPage):
 
         if self.wizard.mb_chosen is not None:
             md = self.wizard.mb_result[self.wizard.mb_chosen]
-            for key in ['title', 'creator', 'date']:
+            for key in ['title', 'creator', 'date', 'description']:
                 if key in md:
                     args[key] = md[key]
             args['external-identifier'] = 'urn:mb_release_id:'+md['id']
