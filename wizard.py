@@ -269,6 +269,9 @@ class BackgroundThread(QtCore.QThread):
         self.metadata = metadata
         self.wizard.ia_result = metadata
 
+        if ('freedb.org' in obj) and (obj['freedb.org']['status'] == 'ok'):
+            self.wizard.freedb_result = obj['freedb.org']['releases']
+
         #if len(self.wizard.ia_result) == 0:
         print 'checking musicbrainz'
         sys.stdout.flush()
@@ -676,9 +679,18 @@ class EACPage(WizardPage):
             for key in ['title', 'creator', 'date', 'description']:
                 if key in md:
                     args[key] = md[key]
-            args['external-identifier'] = 'urn:mb_release_id:'+md['id']
+            args['external-identifier[]'] = ['urn:mb_release_id:'+md['id']]
 
-        self.url += '?' + urllib.urlencode(args)
+        if self.wizard.freedb_result:
+            freedb = self.wizard.freedb_result
+            freedb_genre = freedb[0].get('genre')
+            freedb_id = freedb[0].get('id')
+            if freedb_genre and freedb_id:
+                if 'external-identifier[]' not in args:
+                    args['external-identifier[]'] = []
+                args['external-identifier[]'].append('urn:freedb_id:{g}-{i}'.format(g=freedb_genre, i=freedb_id))
+
+        self.url += '?' + urllib.urlencode(args, True)
 
 
     def nextId(self):
