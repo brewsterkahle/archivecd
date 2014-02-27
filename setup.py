@@ -34,13 +34,13 @@ setup(
     description = "Internet Archive Music Locker",
     name = "ArchiveCD",
 
-    data_files = find_data_files('.', '', ["discid.dll", "ia_logo.jpg", "logo.jpg", "mb_logo.png", "imageformats/*"]),
+    data_files = find_data_files('.', '', ["discid.dll", "images/*", "imageformats/*"]),
     options = {"py2exe": {"includes": ["sip"],        # something loaded dynamically by qt.
                           "excludes": ["_scproxy"],   # an OS X thing it tried to import
 #                          "bundle_files": 1,
                          }
               },
 #    zipfile = None,
-    
+
     windows = ["wizard.py"],
     )

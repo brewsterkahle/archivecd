@@ -1,13 +1,21 @@
 #!/usr/bin/env python
 
+import os
+import sys
+
+#fix for loading discid.dll
+if getattr(sys, 'frozen', None):
+     BASE_DIR = sys._MEIPASS
+else:
+     BASE_DIR = os.path.dirname(__file__)
+os.environ['PATH'] = BASE_DIR + '\;' + os.environ.get('PATH', '')
+import discid
+
 from PyQt4 import QtCore, QtGui
 import ctypes
-import sys
 import json
 import urllib
 import webbrowser
-
-import discid
 import musicbrainzngs
 
 
@@ -58,6 +66,10 @@ class ArchiveWizard(QtGui.QWizard):
         self.mb_chosen     = None
 
 
+    def img_path(self, img):
+        return os.path.join(BASE_DIR, 'images', img)
+
+
     def create_metadata_widget(self, page, metadata, is_ia=False, is_mb=False):
         '''Create a widget with albums from the given metadata array. Return both the
         widget and a list of radio buttons. Wire the radio button toggle event to the
@@ -82,11 +94,11 @@ class ArchiveWizard(QtGui.QWizard):
             hbox = QtGui.QHBoxLayout()
             hbox.addWidget(button)
             if is_ia:
-                label = QtGui.QLabel('<a href="https://archive.org/details/{id}"><img src="ia_logo.jpg"></a>'.format(id=item_id))
+                label = QtGui.QLabel('<a href="https://archive.org/details/{id}"><img src="{img}"></a>'.format(id=item_id, img=self.img_path('ia_logo.jpg')))
                 label.setOpenExternalLinks(True)
                 hbox.addWidget(label)
             elif is_mb:
-                label = QtGui.QLabel('<a href="http://musicbrainz.org/release/{id}"><img src="mb_logo.png"></a>'.format(id=item_id))
+                label = QtGui.QLabel('<a href="http://musicbrainz.org/release/{id}"><img src="{img}"></a>'.format(id=item_id, img=self.img_path('mb_logo.png')))
                 label.setOpenExternalLinks(True)
                 hbox.addWidget(label)
             vbox.addLayout(hbox)
@@ -126,7 +138,7 @@ class IntroPage(WizardPage):
         self.setSubTitle('Please enter a CD and click the Next button')
 
         layout = QtGui.QVBoxLayout()
-        pixmap = QtGui.QPixmap('logo.jpg')
+        pixmap = QtGui.QPixmap(self.wizard.img_path('logo.jpg'))
         img_label = QtGui.QLabel()
         img_label.setPixmap(pixmap)
         img_label.setAlignment(QtCore.Qt.AlignCenter)
