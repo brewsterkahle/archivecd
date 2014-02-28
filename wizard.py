@@ -27,6 +27,7 @@ class ArchiveWizard(QtGui.QWizard):
     useragent = 'Internet Archive Music Locker'
     version   = '0.1'
     url       = 'https://archive.org'
+    metadata_services = ['musicbrainz.org', 'freedb.org']
 
     def __init__(self, parent=None):
         QtGui.QWizard.__init__(self, parent)
@@ -62,6 +63,7 @@ class ArchiveWizard(QtGui.QWizard):
         self.ia_result     = None
         self.mb_result     = None
         self.freedb_result = None
+        self.metadata      = None
         self.ia_chosen     = None
         self.mb_chosen     = None
 
@@ -70,48 +72,99 @@ class ArchiveWizard(QtGui.QWizard):
         return os.path.join(BASE_DIR, 'images', img)
 
 
-    def create_metadata_widget(self, page, metadata, is_ia=False, is_mb=False):
-        '''Create a widget with albums from the given metadata array. Return both the
-        widget and a list of radio buttons. Wire the radio button toggle event to the
-        "radio_clicked" method of the given page.'''
-
+    def display_metadata(self, page, keys):
         widget = QtGui.QWidget()
         vbox = QtGui.QVBoxLayout(widget)
         radio_buttons = []
+        releases = []
+        for key in keys:
+            try:
+                r = self.metadata[key]['releases']
+                for release in r:
+                    release['type'] = key
+                releases += r
+            except LookupError:
+                pass
 
-        for md in metadata:
-            item_id = md['id']
-            button = QtGui.QRadioButton("{t}\n{a}\n{d} {c}".format(t=md['title'], a=md['creator'], d=md['date'], c=md.get('country', '')))
+        print 'releases', releases
+        sys.stdout.flush()
+
+        for release in releases:
+            item_id = release['id']
+            if release['type'] == 'archive.org':
+                md = self.fetch_ia_metadata(item_id)
+            else:
+                md = release
+            button = QtGui.QRadioButton("{t}\n{a}\n{d} {c}".format(t=md.get('title', ''), a=md.get('artists', ''), d=md.get('date', ''), c=md.get('country', '')))
             button.toggled.connect(page.radio_clicked)
 
-            if md['qimg'] is not None:
+            if md.get('qimg') is not None:
                 icon = QtGui.QIcon()
                 icon.addPixmap(QtGui.QPixmap(md['qimg']))
                 button.setIcon(icon)
                 button.setStyleSheet('QRadioButton {icon-size: 100px;}')
 
-            #vbox.addWidget(button)
             hbox = QtGui.QHBoxLayout()
             hbox.addWidget(button)
-            if is_ia:
+            if release['type'] == 'archive.org':
                 label = QtGui.QLabel('<a href="https://archive.org/details/{id}"><img src="{img}"></a>'.format(id=item_id, img=self.img_path('ia_logo.jpg')))
                 label.setOpenExternalLinks(True)
                 hbox.addWidget(label)
-            elif is_mb:
+            elif release['type'] == 'musicbrainz.org':
                 label = QtGui.QLabel('<a href="http://musicbrainz.org/release/{id}"><img src="{img}"></a>'.format(id=item_id, img=self.img_path('mb_logo.png')))
                 label.setOpenExternalLinks(True)
+                hbox.addWidget(label)
+            elif release['type'] == 'freedb.org':
+                label = QtGui.QLabel('<img src="{img}">'.format(img=self.img_path('freedb_logo.jpg')))
                 hbox.addWidget(label)
             vbox.addLayout(hbox)
 
             radio_buttons.append(button)
 
-        if len(metadata) > 0:
+        if len(releases) > 0:
             no_button  = QtGui.QRadioButton("My CD is not shown above")
             no_button.toggled.connect(page.radio_clicked)
             vbox.addWidget(no_button)
             radio_buttons.append(no_button)
 
-        return widget, radio_buttons
+        return widget, radio_buttons, releases
+
+
+    def fetch_ia_metadata(self, item_id):
+        url = 'https://archive.org/metadata/'+item_id
+        print 'fetching ', url
+        sys.stdout.flush()
+        metadata = json.load(urllib.urlopen(url))
+        #print metadata
+        md = {'id':      item_id,
+              'qimg':    self.get_cover_qimg(item_id, metadata),
+              'title':   metadata['metadata'].get('title'),
+              'artists': metadata['metadata'].get('creator'),
+              'date':    metadata['metadata'].get('date')
+             }
+        return md
+
+
+    def get_cover_qimg(self, item_id, metadata):
+        img = None
+        for f in metadata['files']:
+            #print f
+            if f['name'].endswith('_thumb.jpg'):
+                img = f['name']
+                break
+            #todo: set image if itemimage.jpg not found
+
+        qimg = None
+        if img is not None:
+            img_url = "https://archive.org/download/{id}/{img}".format(id=item_id, img=img)
+            print 'loading image from ', img_url
+            sys.stdout.flush()
+            data = urllib.urlopen(img_url).read()
+            qimg = QtGui.QImage()
+            qimg.loadFromData(data)
+            #icon = QtGui.QIcon()
+            #icon.addPixmap(QtGui.QPixmap(qimg))
+        return qimg
 
 
 # WizardPage
@@ -245,12 +298,13 @@ class BackgroundThread(QtCore.QThread):
         self.metadata     = {}
 
     def run(self):
-        if self.wizard.toc_string is None:
-            #called the first time, check archive.org db
-            self.run_ia()
-        else:
-            #called the second time, check MusicBrainz db
-            self.run_mb()
+        self.run_ia()
+        # if self.wizard.toc_string is None:
+        #     #called the first time, check archive.org db
+        #     self.run_ia()
+        # else:
+        #     #called the second time, check MusicBrainz db
+        #     self.run_mb()
 
     def run_ia(self):
         status_label = self.status_label
@@ -268,15 +322,15 @@ class BackgroundThread(QtCore.QThread):
         self.obj = obj
         self.metadata = metadata
         self.wizard.ia_result = metadata
+        self.wizard.metadata = obj
 
         if ('freedb.org' in obj) and (obj['freedb.org']['status'] == 'ok'):
             self.wizard.freedb_result = obj['freedb.org']['releases']
 
-        #if len(self.wizard.ia_result) == 0:
-        print 'checking musicbrainz'
-        sys.stdout.flush()
-        self.wizard.mb_result = self.lookup_mb()
-        print self.wizard.mb_result
+        # print 'checking musicbrainz'
+        # sys.stdout.flush()
+        # self.wizard.mb_result = self.lookup_mb()
+        # print self.wizard.mb_result
 
         self.taskFinished.emit()
 
@@ -467,6 +521,9 @@ class LookupCDPage(WizardPage):
 
     def initializePage(self):
         self.is_complete           = False
+        self.metadata              = []
+        self.show_ia               = False
+        self.show_md               = False
         self.wizard.toc_string     = None
         self.wizard.disc_id        = None
         self.wizard.freedb_discid  = None
@@ -498,25 +555,33 @@ class LookupCDPage(WizardPage):
 
 
     def show_result(self):
-        self.is_ia = False
-        self.is_mb = False
-        if self.wizard.ia_result:
-            print self.wizard.ia_result
-            self.status_label.setText('A match was found in the archive.org database. Please choose the correct match below.')
-            metadata = self.wizard.ia_result
-            self.is_ia = True
-        elif self.wizard.mb_result is not None:
-            self.status_label.setText('This CD was not found in the archive.org database, so we will add it. First, please choose a match from the MusicBrainz database below.')
-            metadata = self.wizard.mb_result
-            self.is_mb = True
+        self.show_ia = self.got_md('archive.org')
+        self.show_md = self.show_ia
+        for key in self.wizard.metadata_services:
+            self.show_md |= self.got_md(key)
 
-        widget, self.radio_buttons = self.wizard.create_metadata_widget(self, metadata, is_ia=self.is_ia, is_mb=self.is_mb)
+        print 'ia', self.show_ia, ' md', self.show_md
+        sys.stdout.flush()
 
-        if len(metadata) == 0:
-            self.is_complete = True
-            self.emit(QtCore.SIGNAL("completeChanged()"))
+        if self.show_ia:
+            widget, self.radio_buttons, self.wizard.ia_result = self.wizard.display_metadata(self, ['archive.org'])
+        elif self.show_md:
+            widget, self.radio_buttons, self.wizard.mb_result = self.wizard.display_metadata(self, self.wizard.metadata_services)
+        else:
+             self.is_complete = True
+             self.emit(QtCore.SIGNAL("completeChanged()"))
 
         self.scroll_area.setWidget(widget)
+
+
+    def got_md(self, key):
+        try:
+            md = self.wizard.metadata[key]
+            if (md['status'] == 'ok') and md['releases']:
+                return True
+        except LookupError:
+            pass
+        return False
 
 
     def radio_clicked(self, enabled):
@@ -526,14 +591,14 @@ class LookupCDPage(WizardPage):
                 break
 
         if (i != len(self.radio_buttons)-1) and (i != -1):
-            if self.is_ia:
+            if self.show_ia:
                 self.wizard.ia_chosen = i
-            elif self.is_mb:
+            elif self.show_md:
                 self.wizard.mb_chosen = i
         else:
-            if self.is_ia:
+            if self.show_ia:
                 self.wizard.ia_chosen = None
-            elif self.is_mb:
+            elif self.show_md:
                 self.wizard.mb_chosen = None
 
         self.is_complete = True
@@ -550,18 +615,18 @@ class LookupCDPage(WizardPage):
             if radio.isChecked():
                 break
 
-        if self.wizard.ia_result:
-            #We have a match from the archive.org db. If the user said that the match
-            #was correct, mark the disc as added to their Music Locker. Otherwise,
-            #if there was an match from the MusicBrainz db, show MB results to the user.
-            #If there were no MB matches, go directly to the EAC page.
-            if (i == len(self.radio_buttons)-1) or (i == -1):
-                if self.wizard.mb_result:
+        if self.show_md:
+            if self.show_ia:
+                #We have a match from the archive.org db. If the user said that the match
+                #was correct, mark the disc as added to their Music Locker. Otherwise,
+                #if there was an match from the MusicBrainz db, show MB results to the user.
+                #If there were no MB matches, go directly to the EAC page.
+                if (i == len(self.radio_buttons)-1) or (i == -1):
                     return self.wizard.Page_MusicBrainz
                 else:
-                    return self.wizard.Page_EAC
+                    return self.wizard.Page_Mark_Added
             else:
-                return self.wizard.Page_Mark_Added
+                return self.wizard.Page_EAC
         else:
             return self.wizard.Page_EAC
 
@@ -609,14 +674,8 @@ class MusicBrainzPage(WizardPage):
 
 
     def initializePage(self):
-        metadata = self.wizard.mb_result
-        widget, self.radio_buttons = self.wizard.create_metadata_widget(self, metadata, is_mb=True)
-
         self.is_complete = False
-        if len(metadata) == 0:
-            self.is_complete = True
-            self.emit(QtCore.SIGNAL("completeChanged()"))
-
+        widget, self.radio_buttons, self.wizard.mb_result = self.wizard.display_metadata(self, self.wizard.metadata_services)
         self.scroll_area.setWidget(widget)
 
 
@@ -678,8 +737,12 @@ class EACPage(WizardPage):
             md = self.wizard.mb_result[self.wizard.mb_chosen]
             for key in ['title', 'creator', 'date', 'description']:
                 if key in md:
-                    args[key] = md[key]
-            args['external-identifier[]'] = ['urn:mb_release_id:'+md['id']]
+                    val = md[key]
+                    if key == 'description':
+                        val = val.replace('\n', '<br/>')
+                    args[key] = val
+            if md['type'] == 'musicbrainz.org':
+                args['external-identifier[]'] = ['urn:mb_release_id:'+md['id']]
 
         freedb_id = self.get_freedb_external_id()
         if freedb_id:
@@ -694,7 +757,7 @@ class EACPage(WizardPage):
 
     def get_freedb_external_id(self):
         try:
-            freedb = self.wizard.freedb_result
+            freedb = self.wizard.metadata['freedb.org']['releases']
             freedb_genre = freedb[0]['genre']
             freedb_id = freedb[0]['id']
             return 'urn:freedb_id:{g}-{i}'.format(g=freedb_genre, i=freedb_id)
