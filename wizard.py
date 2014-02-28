@@ -89,12 +89,8 @@ class ArchiveWizard(QtGui.QWizard):
         print 'releases', releases
         sys.stdout.flush()
 
-        for release in releases:
-            item_id = release['id']
-            if release['type'] == 'archive.org':
-                md = self.fetch_ia_metadata(item_id)
-            else:
-                md = release
+        for md in releases:
+            item_id = md['id']
             button = QtGui.QRadioButton("{t}\n{a}\n{d} {c}".format(t=md.get('title', ''), a=md.get('artists', ''), d=md.get('date', ''), c=md.get('country', '')))
             button.toggled.connect(page.radio_clicked)
 
@@ -106,15 +102,15 @@ class ArchiveWizard(QtGui.QWizard):
 
             hbox = QtGui.QHBoxLayout()
             hbox.addWidget(button)
-            if release['type'] == 'archive.org':
+            if md['type'] == 'archive.org':
                 label = QtGui.QLabel('<a href="https://archive.org/details/{id}"><img src="{img}"></a>'.format(id=item_id, img=self.img_path('ia_logo.jpg')))
                 label.setOpenExternalLinks(True)
                 hbox.addWidget(label)
-            elif release['type'] == 'musicbrainz.org':
+            elif md['type'] == 'musicbrainz.org':
                 label = QtGui.QLabel('<a href="http://musicbrainz.org/release/{id}"><img src="{img}"></a>'.format(id=item_id, img=self.img_path('mb_logo.png')))
                 label.setOpenExternalLinks(True)
                 hbox.addWidget(label)
-            elif release['type'] == 'freedb.org':
+            elif md['type'] == 'freedb.org':
                 label = QtGui.QLabel('<img src="{img}">'.format(img=self.img_path('freedb_logo.jpg')))
                 hbox.addWidget(label)
             vbox.addLayout(hbox)
@@ -128,43 +124,6 @@ class ArchiveWizard(QtGui.QWizard):
             radio_buttons.append(no_button)
 
         return widget, radio_buttons, releases
-
-
-    def fetch_ia_metadata(self, item_id):
-        url = 'https://archive.org/metadata/'+item_id
-        print 'fetching ', url
-        sys.stdout.flush()
-        metadata = json.load(urllib.urlopen(url))
-        #print metadata
-        md = {'id':      item_id,
-              'qimg':    self.get_cover_qimg(item_id, metadata),
-              'title':   metadata['metadata'].get('title'),
-              'artists': metadata['metadata'].get('creator'),
-              'date':    metadata['metadata'].get('date')
-             }
-        return md
-
-
-    def get_cover_qimg(self, item_id, metadata):
-        img = None
-        for f in metadata['files']:
-            #print f
-            if f['name'].endswith('_thumb.jpg'):
-                img = f['name']
-                break
-            #todo: set image if itemimage.jpg not found
-
-        qimg = None
-        if img is not None:
-            img_url = "https://archive.org/download/{id}/{img}".format(id=item_id, img=img)
-            print 'loading image from ', img_url
-            sys.stdout.flush()
-            data = urllib.urlopen(img_url).read()
-            qimg = QtGui.QImage()
-            qimg.loadFromData(data)
-            #icon = QtGui.QIcon()
-            #icon.addPixmap(QtGui.QPixmap(qimg))
-        return qimg
 
 
 # WizardPage
@@ -295,7 +254,7 @@ class BackgroundThread(QtCore.QThread):
         self.wizard       = wizard
         self.status_label = status_label
         self.obj          = None
-        self.metadata     = {}
+        #self.metadata     = {}
 
     def run(self):
         self.run_ia()
@@ -318,10 +277,10 @@ class BackgroundThread(QtCore.QThread):
         self.wizard.disc_id    = disc.id
         self.wizard.freedb_discid  = disc.freedb_id
 
-        obj, metadata = self.lookup_ia()
+        obj = self.lookup_ia()
         self.obj = obj
-        self.metadata = metadata
-        self.wizard.ia_result = metadata
+        #self.metadata = metadata
+        #self.wizard.ia_result = metadata
         self.wizard.metadata = obj
 
         if ('freedb.org' in obj) and (obj['freedb.org']['status'] == 'ok'):
@@ -376,11 +335,11 @@ class BackgroundThread(QtCore.QThread):
         print c
         sys.stdout.flush()
         obj = json.loads(c)
-        metadata   = []
         for item in obj['archive.org']['releases']:
             item_id = item['id']
-            metadata.append(self.fetch_ia_metadata(item_id))
-        return obj, metadata
+            ia_md = self.fetch_ia_metadata(item_id)
+            item.update(ia_md)
+        return obj
 
 
     def fetch_ia_metadata(self, item_id):
@@ -392,7 +351,7 @@ class BackgroundThread(QtCore.QThread):
         md = {'id':      item_id,
               'qimg':    self.get_cover_qimg(item_id, metadata),
               'title':   metadata['metadata'].get('title'),
-              'creator': metadata['metadata'].get('creator'),
+              'artists': metadata['metadata'].get('creator'),
               'date':    metadata['metadata'].get('date')
              }
         return md
