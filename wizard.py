@@ -695,8 +695,8 @@ class EACPage(WizardPage):
     def get_freedb_external_id(self):
         try:
             freedb = self.wizard.freedb_result
-            freedb_genre = freedb[0].get('genre')
-            freedb_id = freedb[0].get('id')
+            freedb_genre = freedb[0]['genre']
+            freedb_id = freedb[0]['id']
             return 'urn:freedb_id:{g}-{i}'.format(g=freedb_genre, i=freedb_id)
         except (LookupError, TypeError):
             return None
