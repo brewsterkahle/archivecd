@@ -335,10 +335,16 @@ class BackgroundThread(QtCore.QThread):
         print c
         sys.stdout.flush()
         obj = json.loads(c)
+
+        not_in_coverart_archive = []
         for item in obj['archive.org']['releases']:
             item_id = item['id']
             ia_md = self.fetch_ia_metadata(item_id)
             item.update(ia_md)
+            if ia_md['collection'] != 'coverartarchive':
+                not_in_coverart_archive.append(item)
+
+        obj['archive.org']['releases'] = not_in_coverart_archive
         return obj
 
 
@@ -347,12 +353,16 @@ class BackgroundThread(QtCore.QThread):
         print 'fetching ', url
         sys.stdout.flush()
         metadata = json.load(urllib.urlopen(url))
-        #print metadata
+
+        #print 'METADATA API:', metadata
+        #sys.stdout.flush()
+
         md = {'id':      item_id,
               'qimg':    self.get_cover_qimg(item_id, metadata),
               'title':   metadata['metadata'].get('title'),
               'artists': metadata['metadata'].get('creator'),
-              'date':    metadata['metadata'].get('date')
+              'date':    metadata['metadata'].get('date'),
+              'collection': metadata['metadata'].get('collection'),
              }
         return md
 
