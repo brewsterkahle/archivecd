@@ -681,16 +681,25 @@ class EACPage(WizardPage):
                     args[key] = md[key]
             args['external-identifier[]'] = ['urn:mb_release_id:'+md['id']]
 
-        if self.wizard.freedb_result:
+        freedb_id = self.get_freedb_external_id()
+        if freedb_id:
+            external_ids = args.get('external-identifier[]', [])
+            args['external-identifier[]'] = external_ids + [freedb_id]
+
+        print 'args', args
+        sys.stdout.flush()
+
+        self.url += '?' + urllib.urlencode(args, True)
+
+
+    def get_freedb_external_id(self):
+        try:
             freedb = self.wizard.freedb_result
             freedb_genre = freedb[0].get('genre')
             freedb_id = freedb[0].get('id')
-            if freedb_genre and freedb_id:
-                if 'external-identifier[]' not in args:
-                    args['external-identifier[]'] = []
-                args['external-identifier[]'].append('urn:freedb_id:{g}-{i}'.format(g=freedb_genre, i=freedb_id))
-
-        self.url += '?' + urllib.urlencode(args, True)
+            return 'urn:freedb_id:{g}-{i}'.format(g=freedb_genre, i=freedb_id)
+        except (LookupError, TypeError):
+            return None
 
 
     def nextId(self):
