@@ -27,7 +27,26 @@ class ArchiveWizard(QtGui.QWizard):
     useragent = 'Internet Archive Music Locker'
     version   = '0.1'
     url       = 'https://archive.org'
-    metadata_services = ['musicbrainz.org', 'freedb.org']
+    metadata_services = ['musicbrainz.org', 'freedb.org', 'gracenote.com']
+    service_logos = {
+        'archive.org': {
+            'image':    'ia_logo.jpg',
+            'template': '<a href="https://archive.org/details/{id}"><img src="{img}"></a>',
+        },
+        'musicbrainz.org': {
+            'image':    'mb_logo.png',
+            'template': '<a href="http://musicbrainz.org/release/{id}"><img src="{img}"></a>',
+        },
+        'freedb.org': {
+            'image':    'freedb_logo.jpg',
+            'template': '<img src="{img}">',
+        },
+        'gracenote.com': {
+            'image':    'gracenote_logo.png',
+            'template': '<img src="{img}">',
+        },
+    }
+
 
     def __init__(self, parent=None):
         QtGui.QWizard.__init__(self, parent)
@@ -102,19 +121,16 @@ class ArchiveWizard(QtGui.QWizard):
 
             hbox = QtGui.QHBoxLayout()
             hbox.addWidget(button)
-            if md['type'] == 'archive.org':
-                label = QtGui.QLabel('<a href="https://archive.org/details/{id}"><img src="{img}"></a>'.format(id=item_id, img=self.img_path('ia_logo.jpg')))
-                label.setOpenExternalLinks(True)
-                hbox.addWidget(label)
-            elif md['type'] == 'musicbrainz.org':
-                label = QtGui.QLabel('<a href="http://musicbrainz.org/release/{id}"><img src="{img}"></a>'.format(id=item_id, img=self.img_path('mb_logo.png')))
-                label.setOpenExternalLinks(True)
-                hbox.addWidget(label)
-            elif md['type'] == 'freedb.org':
-                label = QtGui.QLabel('<img src="{img}">'.format(img=self.img_path('freedb_logo.jpg')))
-                hbox.addWidget(label)
-            vbox.addLayout(hbox)
 
+            if md['type'] in self.service_logos:
+                service_logo = self.service_logos[md['type']]
+                template = service_logo['template']
+                image = service_logo['image']
+                label = QtGui.QLabel(template.format(id=item_id, img=self.img_path(image)))
+                label.setOpenExternalLinks(True)
+                hbox.addWidget(label)
+
+            vbox.addLayout(hbox)
             radio_buttons.append(button)
 
         if len(releases) > 0:
