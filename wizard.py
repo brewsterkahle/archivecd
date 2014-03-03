@@ -730,9 +730,11 @@ class EACPage(WizardPage):
                 args['external-identifier[]'] = ['urn:mb_release_id:'+md['id']]
 
         freedb_id = self.get_freedb_external_id()
-        if freedb_id:
-            external_ids = args.get('external-identifier[]', [])
-            args['external-identifier[]'] = external_ids + [freedb_id]
+        gracenote_id = self.get_gracenote_external_id()
+        for id in (freedb_id, gracenote_id):
+            if id:
+                external_ids = args.get('external-identifier[]', [])
+                args['external-identifier[]'] = external_ids + [id]
 
         print 'args', args
         sys.stdout.flush()
@@ -746,6 +748,15 @@ class EACPage(WizardPage):
             freedb_genre = freedb[0]['genre']
             freedb_id = freedb[0]['id']
             return 'urn:freedb_id:{g}-{i}'.format(g=freedb_genre, i=freedb_id)
+        except (LookupError, TypeError):
+            return None
+
+
+    def get_gracenote_external_id(self):
+        try:
+            gracenote = self.wizard.metadata['gracenote.com']['releases']
+            gracenote_id = gracenote[0]['id']
+            return 'urn:gracenote_id:{id}'.format(id=gracenote_id)
         except (LookupError, TypeError):
             return None
 
