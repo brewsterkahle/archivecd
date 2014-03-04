@@ -273,15 +273,6 @@ class BackgroundThread(QtCore.QThread):
         #self.metadata     = {}
 
     def run(self):
-        self.run_ia()
-        # if self.wizard.toc_string is None:
-        #     #called the first time, check archive.org db
-        #     self.run_ia()
-        # else:
-        #     #called the second time, check MusicBrainz db
-        #     self.run_mb()
-
-    def run_ia(self):
         status_label = self.status_label
 
         disc = self.read_cd()
@@ -301,22 +292,6 @@ class BackgroundThread(QtCore.QThread):
 
         if ('freedb.org' in obj) and (obj['freedb.org']['status'] == 'ok'):
             self.wizard.freedb_result = obj['freedb.org']['releases']
-
-        # print 'checking musicbrainz'
-        # sys.stdout.flush()
-        # self.wizard.mb_result = self.lookup_mb()
-        # print self.wizard.mb_result
-
-        self.taskFinished.emit()
-
-
-    def run_mb(self):
-        status_label = self.status_label
-
-        print 'IA result not found, checking musicbrainz'
-        sys.stdout.flush()
-        self.wizard.mb_result = self.lookup_mb()
-        print self.wizard.mb_result
 
         self.taskFinished.emit()
 
@@ -735,11 +710,14 @@ class EACPage(WizardPage):
                 args['external-identifier[]'] = ['urn:mb_release_id:'+md['id']]
 
         freedb_id = self.get_freedb_external_id()
-        gracenote_id = self.get_gracenote_external_id()
+        gracenote_id, gracenote_genre = self.get_gracenote_external_id()
         for id in (freedb_id, gracenote_id):
             if id:
                 external_ids = args.get('external-identifier[]', [])
                 args['external-identifier[]'] = external_ids + [id]
+
+        if gracenote_genre:
+            args['subject'] = gracenote_genre
 
         print 'args', args
         sys.stdout.flush()
@@ -761,9 +739,10 @@ class EACPage(WizardPage):
         try:
             gracenote = self.wizard.metadata['gracenote.com']['releases']
             gracenote_id = gracenote[0]['id']
-            return 'urn:gracenote_id:{id}'.format(id=gracenote_id)
+            gracenote_genre = gracenote[0].get('genre')
+            return 'urn:gracenote_id:{id}'.format(id=gracenote_id), gracenote_genre
         except (LookupError, TypeError):
-            return None
+            return None, None
 
 
     def nextId(self):
