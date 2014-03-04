@@ -12,6 +12,7 @@ os.environ['PATH'] = BASE_DIR + '\;' + os.environ.get('PATH', '')
 import discid
 
 from PyQt4 import QtCore, QtGui
+import re
 import ctypes
 import json
 import urllib
@@ -25,7 +26,7 @@ class ArchiveWizard(QtGui.QWizard):
     Page_Intro, Page_Scan_Drives, Page_Lookup_CD, Page_Mark_Added, Page_MusicBrainz, Page_EAC, Page_Select_EAC, Page_Verify_EAC, Page_Upload, Page_Verify_Upload = range(10)
 
     useragent = 'Internet Archive Music Locker'
-    version   = '0.102'
+    version   = '0.103'
     url       = 'https://archive.org'
     metadata_services = ['musicbrainz.org', 'freedb.org', 'gracenote.com']
     service_logos = {
@@ -754,6 +755,10 @@ class EACPage(WizardPage):
         if gracenote_genre:
             args['subject'] = gracenote_genre
 
+        id = self.make_identifier(args)
+        if id:
+            args['suggested_identifier'] = id
+
         print 'args', args
         sys.stdout.flush()
 
@@ -778,6 +783,19 @@ class EACPage(WizardPage):
             return 'urn:gracenote_id:{id}'.format(id=gracenote_id), gracenote_genre
         except (LookupError, TypeError):
             return None, None
+
+
+    def make_identifier(self, args):
+        id = None
+        try:
+            regex  = re.compile('[^a-zA-Z0-9\.\-_]+')
+            artist = regex.sub('', args['creator[]'][0].lower().replace(' ', '-'))
+            title  = regex.sub('', args['title'].lower().replace(' ', '-'))
+            if artist and title:
+                id     = 'cd_{title}_{artist}'.format(artist=artist, title=title)
+        except:
+            pass
+        return id
 
 
     def nextId(self):
