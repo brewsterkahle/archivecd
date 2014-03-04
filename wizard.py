@@ -25,7 +25,7 @@ class ArchiveWizard(QtGui.QWizard):
     Page_Intro, Page_Scan_Drives, Page_Lookup_CD, Page_Mark_Added, Page_MusicBrainz, Page_EAC, Page_Select_EAC, Page_Verify_EAC, Page_Upload, Page_Verify_Upload = range(10)
 
     useragent = 'Internet Archive Music Locker'
-    version   = '0.1'
+    version   = '0.101'
     url       = 'https://archive.org'
     metadata_services = ['musicbrainz.org', 'freedb.org', 'gracenote.com']
     service_logos = {
@@ -701,13 +701,15 @@ class EACPage(WizardPage):
 
         if self.wizard.mb_chosen is not None:
             md = self.wizard.mb_result[self.wizard.mb_chosen]
-            for key in ['title', 'creator', 'date', 'description']:
+            for key in ['title', 'artists', 'date', 'description']:
                 if key in md:
                     val = md[key]
                     if key == 'description':
                         if isinstance(val, list):
                             val = val[0]
                         val = val.replace('\n', '<br/>')
+                    if key == 'artists':
+                        key = 'creator[]'
                     args[key] = val
             if md['type'] == 'musicbrainz.org':
                 args['external-identifier[]'] = ['urn:mb_release_id:'+md['id']]
