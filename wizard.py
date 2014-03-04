@@ -553,8 +553,9 @@ class LookupCDPage(WizardPage):
         elif self.show_md:
             widget, self.radio_buttons, self.wizard.mb_result = self.wizard.display_metadata(self, self.wizard.metadata_services)
         else:
-             self.is_complete = True
-             self.emit(QtCore.SIGNAL("completeChanged()"))
+            widget = QtGui.QLabel('Your album was not found in our database. Please press the Next button to continue.')
+            self.is_complete = True
+            self.emit(QtCore.SIGNAL("completeChanged()"))
 
         self.scroll_area.setWidget(widget)
 
