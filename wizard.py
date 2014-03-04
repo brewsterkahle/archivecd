@@ -177,6 +177,9 @@ class IntroPage(WizardPage):
         layout.addLayout(line1)
         layout.addLayout(line2)
 
+        version_label = QtGui.QLabel('version ' + str(self.wizard.version))
+        layout.addWidget(version_label)
+
         self.setLayout(layout)
 
 
