@@ -25,7 +25,7 @@ class ArchiveWizard(QtGui.QWizard):
     Page_Intro, Page_Scan_Drives, Page_Lookup_CD, Page_Mark_Added, Page_MusicBrainz, Page_EAC, Page_Select_EAC, Page_Verify_EAC, Page_Upload, Page_Verify_Upload = range(10)
 
     useragent = 'Internet Archive Music Locker'
-    version   = '0.101'
+    version   = '0.102'
     url       = 'https://archive.org'
     metadata_services = ['musicbrainz.org', 'freedb.org', 'gracenote.com']
     service_logos = {
@@ -39,7 +39,7 @@ class ArchiveWizard(QtGui.QWizard):
         },
         'freedb.org': {
             'image':    'freedb_logo.jpg',
-            'template': '<img src="{img}">',
+            'template': '<a href="http://freedb.freedb.org/~cddb/cddb.cgi?cmd=cddb+read+{id}&hello=joe+my.host.com+xmcd+2.1&proto=6"><img src="{img}"></a>',
         },
         'gracenote.com': {
             'image':    'gracenote_logo.png',
@@ -110,6 +110,7 @@ class ArchiveWizard(QtGui.QWizard):
 
         for md in releases:
             item_id = md['id']
+
             button = QtGui.QRadioButton("{t}\n{a}\n{d} {c}".format(t=md.get('title', ''), a=md.get('artists', ''), d=md.get('date', ''), c=md.get('country', '')))
             button.toggled.connect(page.radio_clicked)
 
@@ -339,6 +340,24 @@ class BackgroundThread(QtCore.QThread):
                 not_in_coverart_archive.append(item)
 
         obj['archive.org']['releases'] = not_in_coverart_archive
+
+        for key in obj:
+            if key == 'archive.org':
+                continue
+            service = obj[key]
+            if 'releases' not in service:
+                continue
+            for release in service['releases']:
+                cover_url = release.get('cover_url')
+                if cover_url:
+                    status_label.setText('Fetching cover image from ' + key)
+                    qimg = self.get_cover_qimg(cover_url)
+                    if qimg:
+                        release['qimg'] = qimg
+                print 'RELEASE', release
+
+        status_label.setText('Finished querying database')
+
         return obj
 
 
@@ -352,7 +371,7 @@ class BackgroundThread(QtCore.QThread):
         #sys.stdout.flush()
 
         md = {'id':      item_id,
-              'qimg':    self.get_cover_qimg(item_id, metadata),
+              'qimg':    self.get_cover_ia(item_id, metadata),
               'title':   metadata['metadata'].get('title'),
               'artists': metadata['metadata'].get('creator'),
               'date':    metadata['metadata'].get('date'),
@@ -361,7 +380,7 @@ class BackgroundThread(QtCore.QThread):
         return md
 
 
-    def get_cover_qimg(self, item_id, metadata):
+    def get_cover_ia(self, item_id, metadata):
         img = None
         for f in metadata['files']:
             #print f
@@ -373,14 +392,25 @@ class BackgroundThread(QtCore.QThread):
         qimg = None
         if img is not None:
             img_url = "https://archive.org/download/{id}/{img}".format(id=item_id, img=img)
+            qimg = self.get_cover_qimg(img_url)
+            #print 'loading image from ', img_url
+            #sys.stdout.flush()
+            #data = urllib.urlopen(img_url).read()
+            #qimg = QtGui.QImage()
+            #qimg.loadFromData(data)
+        return qimg
+
+
+    def get_cover_qimg(self, img_url):
+        try:
             print 'loading image from ', img_url
             sys.stdout.flush()
             data = urllib.urlopen(img_url).read()
             qimg = QtGui.QImage()
             qimg.loadFromData(data)
-            #icon = QtGui.QIcon()
-            #icon.addPixmap(QtGui.QPixmap(qimg))
-        return qimg
+            return qimg
+        except:
+            return None
 
 
     def lookup_mb(self):
@@ -715,7 +745,7 @@ class EACPage(WizardPage):
                 args['external-identifier[]'] = ['urn:mb_release_id:'+md['id']]
 
         freedb_id = self.get_freedb_external_id()
-        gracenote_id, gracenote_genre = self.get_gracenote_external_id()
+        gracenote_id, gracenote_genre = self.get_gracenote_metadata()
         for id in (freedb_id, gracenote_id):
             if id:
                 external_ids = args.get('external-identifier[]', [])
@@ -735,12 +765,12 @@ class EACPage(WizardPage):
             freedb = self.wizard.metadata['freedb.org']['releases']
             freedb_genre = freedb[0]['genre']
             freedb_id = freedb[0]['id']
-            return 'urn:freedb_id:{g}-{i}'.format(g=freedb_genre, i=freedb_id)
+            return 'urn:freedb_id:{id}'.format(id=freedb_id)
         except (LookupError, TypeError):
             return None
 
 
-    def get_gracenote_external_id(self):
+    def get_gracenote_metadata(self):
         try:
             gracenote = self.wizard.metadata['gracenote.com']['releases']
             gracenote_id = gracenote[0]['id']
