@@ -713,9 +713,11 @@ class EACPage(WizardPage):
         sys.stdout.flush()
 
         self.url = 'https://archive.org/upload'
-        args = {'collection':          'acdc',
-                'source':              'CD',
-                'test_item':           1,
+        args = {'collection':   'acdc',
+                'source':       'CD',
+                'releasetype':  'album',
+                'toc':          self.wizard.toc_string,
+                'test_item':    1,
                }
 
         if self.wizard.mb_chosen is not None:
@@ -724,6 +726,8 @@ class EACPage(WizardPage):
                 if key in md:
                     val = md[key]
                     if key == 'description':
+                        if isinstance(val, list):
+                            val = val[0]
                         val = val.replace('\n', '<br/>')
                     args[key] = val
             if md['type'] == 'musicbrainz.org':
