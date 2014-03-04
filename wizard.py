@@ -26,7 +26,7 @@ class ArchiveWizard(QtGui.QWizard):
     Page_Intro, Page_Scan_Drives, Page_Lookup_CD, Page_Mark_Added, Page_MusicBrainz, Page_EAC, Page_Select_EAC, Page_Verify_EAC, Page_Upload, Page_Verify_Upload = range(10)
 
     useragent = 'Internet Archive Music Locker'
-    version   = '0.103'
+    version   = '0.104'
     url       = 'https://archive.org'
     metadata_services = ['musicbrainz.org', 'freedb.org', 'gracenote.com']
     service_logos = {
@@ -112,7 +112,7 @@ class ArchiveWizard(QtGui.QWizard):
         for md in releases:
             item_id = md['id']
 
-            button = QtGui.QRadioButton("{t}\n{a}\n{d} {c}".format(t=md.get('title', ''), a=md.get('artists', ''), d=md.get('date', ''), c=md.get('country', '')))
+            button = QtGui.QRadioButton("{t}\n{a}\n{d} {c}".format(t=md.get('title', ''), a=', '.join(md.get('artists', '')), d=md.get('date', ''), c=md.get('country', '')))
             button.toggled.connect(page.radio_clicked)
 
             if md.get('qimg') is not None:
