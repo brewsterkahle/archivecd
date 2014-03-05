@@ -106,7 +106,7 @@ class ArchiveWizard(QtGui.QWizard):
             except LookupError:
                 pass
 
-        print 'releases', releases
+        #print 'releases', releases
         sys.stdout.flush()
 
         for md in releases:
@@ -332,9 +332,9 @@ class BackgroundThread(QtCore.QThread):
 
         f = urllib.urlopen(url)
         c = f.read()
-        print c
-        sys.stdout.flush()
         obj = json.loads(c)
+        print json.dumps(obj, indent=4)
+        sys.stdout.flush()
 
         for item in obj['archive.org']['releases']:
             item_id = item['id']
@@ -354,7 +354,7 @@ class BackgroundThread(QtCore.QThread):
                     qimg = self.get_cover_qimg(cover_url)
                     if qimg:
                         release['qimg'] = qimg
-                print 'RELEASE', release
+                #print 'RELEASE', release
 
         status_label.setText('Finished querying database')
 
@@ -758,7 +758,7 @@ class EACPage(WizardPage):
         if id:
             args['suggested_identifier'] = id
 
-        print 'args', args
+        print 'args', json.dumps(args, indent=4)
         sys.stdout.flush()
 
         self.url += '?' + urllib.urlencode(args, True)
