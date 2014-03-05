@@ -410,7 +410,7 @@ class BackgroundThread(QtCore.QThread):
             qimg = QtGui.QImage()
             qimg.loadFromData(data)
             return qimg
-        except:
+        except Exception:
             return None
 
 
@@ -426,7 +426,7 @@ class BackgroundThread(QtCore.QThread):
         musicbrainzngs.set_useragent(self.wizard.useragent, self.wizard.version, self.wizard.url)
         try:
             mb = musicbrainzngs.get_releases_by_discid(disc_id, includes=["artists", "recordings"])
-        except:
+        except Exception:
             mb = {}
         print mb
 
@@ -793,7 +793,7 @@ class EACPage(WizardPage):
             title  = regex.sub('', args['title'].lower().replace(' ', '-'))
             if artist and title:
                 id     = 'cd_{title}_{artist}'.format(artist=artist, title=title)
-        except:
+        except Exception:
             pass
         return id
 
