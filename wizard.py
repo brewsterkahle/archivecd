@@ -26,7 +26,7 @@ class ArchiveWizard(QtGui.QWizard):
     Page_Intro, Page_Scan_Drives, Page_Lookup_CD, Page_Mark_Added, Page_MusicBrainz, Page_EAC, Page_Select_EAC, Page_Verify_EAC, Page_Upload, Page_Verify_Upload = range(10)
 
     useragent = 'Internet Archive Music Locker'
-    version   = '0.104'
+    version   = '0.105'
     url       = 'https://archive.org'
     metadata_services = ['musicbrainz.org', 'freedb.org', 'gracenote.com']
     service_logos = {
@@ -323,6 +323,10 @@ class BackgroundThread(QtCore.QThread):
                                  'version': 2})
         #test_toc = '1 10 211995 182 22295 46610 71440 94720 108852 132800 155972 183515 200210'
         #url += urllib.urlencode({'sectors': test_toc})
+
+        #test results from coverartarchive:
+        #url = 'http://dowewantit0.us.archive.org:5000/lookupCD?mb_discid=4kclzDTxSO_3SOzXlmxxjDCsTPw-&freedb_discid=c90a6e10&version=2&sectors=1+16+200447+150+1795+22335+38900+42357+54407+69417+90770+93927+104780+120090+122705+130822+146112+162935+180952'
+
         print 'fetching ', url
         sys.stdout.flush()
 
@@ -332,15 +336,10 @@ class BackgroundThread(QtCore.QThread):
         sys.stdout.flush()
         obj = json.loads(c)
 
-        not_in_coverart_archive = []
         for item in obj['archive.org']['releases']:
             item_id = item['id']
             ia_md = self.fetch_ia_metadata(item_id)
             item.update(ia_md)
-            if ia_md['collection'] != 'coverartarchive':
-                not_in_coverart_archive.append(item)
-
-        obj['archive.org']['releases'] = not_in_coverart_archive
 
         for key in obj:
             if key == 'archive.org':
