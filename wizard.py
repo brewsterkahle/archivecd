@@ -27,7 +27,7 @@ class ArchiveWizard(QtGui.QWizard):
     Page_Intro, Page_Scan_Drives, Page_Lookup_CD, Page_Mark_Added, Page_MusicBrainz, Page_EAC, Page_Select_EAC, Page_Verify_EAC, Page_Upload, Page_Verify_Upload = range(10)
 
     useragent = 'Internet Archive Music Locker'
-    version   = '0.107'
+    version   = '0.108'
     url       = 'https://archive.org'
     metadata_services = ['musicbrainz.org', 'freedb.org', 'gracenote.com']
     service_logos = {
@@ -245,7 +245,7 @@ class IntroPage(WizardPage):
 
         if not os.path.exists(path):
             try:
-                url = 'https://archive.org/download/MusicLocker/{f}'.format(f=new_file)
+                url = 'https://archive.org/download/archivecd/{f}'.format(f=new_file)
                 print 'Downloading {url} to {p}'.format(url=url, p=path)
                 sys.stdout.flush()
                 self.update_label.setText('Downloading {f}...'.format(f=new_file))
