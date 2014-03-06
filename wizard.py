@@ -27,7 +27,7 @@ class ArchiveWizard(QtGui.QWizard):
     Page_Intro, Page_Scan_Drives, Page_Lookup_CD, Page_Mark_Added, Page_MusicBrainz, Page_EAC, Page_Select_EAC, Page_Verify_EAC, Page_Upload, Page_Verify_Upload = range(10)
 
     useragent = 'Internet Archive Music Locker'
-    version   = '0.106'
+    version   = '0.107'
     url       = 'https://archive.org'
     metadata_services = ['musicbrainz.org', 'freedb.org', 'gracenote.com']
     service_logos = {
@@ -214,7 +214,7 @@ class IntroPage(WizardPage):
         try:
             current_version = distutils.version.StrictVersion(self.wizard.version)
             self.newest_version = current_version
-            ml = urllib.urlopen('https://archive.org/metadata/MusicLocker/files')
+            ml = urllib.urlopen('https://archive.org/metadata/archivecd/files')
             files = json.load(ml)
             for file in files['result']:
                 name = file['name']
