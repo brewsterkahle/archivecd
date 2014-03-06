@@ -7,14 +7,15 @@ import sys
 if getattr(sys, 'frozen', None):
      BASE_DIR = sys._MEIPASS
 else:
-     BASE_DIR = os.path.dirname(__file__)
+     BASE_DIR = os.getcwd()
 os.environ['PATH'] = BASE_DIR + '\;' + os.environ.get('PATH', '')
 import discid
 
 from PyQt4 import QtCore, QtGui
-import re
 import ctypes
+import distutils.version
 import json
+import re
 import urllib
 import webbrowser
 import musicbrainzngs
@@ -26,7 +27,7 @@ class ArchiveWizard(QtGui.QWizard):
     Page_Intro, Page_Scan_Drives, Page_Lookup_CD, Page_Mark_Added, Page_MusicBrainz, Page_EAC, Page_Select_EAC, Page_Verify_EAC, Page_Upload, Page_Verify_Upload = range(10)
 
     useragent = 'Internet Archive Music Locker'
-    version   = '0.105'
+    version   = '0.106'
     url       = 'https://archive.org'
     metadata_services = ['musicbrainz.org', 'freedb.org', 'gracenote.com']
     service_logos = {
@@ -158,7 +159,10 @@ class IntroPage(WizardPage):
     def __init__(self, wizard):
         WizardPage.__init__(self, wizard)
         self.setTitle('Introduction')
+        self.is_complete = (sys.platform == 'win32')
 
+
+    def initializePage(self):
         #Check to ensure we are on Windows
         if sys.platform != 'win32':
             error_str = 'This program must be run on a Windows computer.'
@@ -167,22 +171,23 @@ class IntroPage(WizardPage):
 
         self.setSubTitle('Please enter a CD and click the Next button')
 
-        layout = QtGui.QVBoxLayout()
+        self.layout = QtGui.QVBoxLayout()
         pixmap = QtGui.QPixmap(self.wizard.img_path('logo.jpg'))
         img_label = QtGui.QLabel()
         img_label.setPixmap(pixmap)
         img_label.setAlignment(QtCore.Qt.AlignCenter)
-        layout.addWidget(img_label)
+        self.layout.addWidget(img_label)
 
         line1 = self.make_field('archive.org username:')
         line2 = self.make_field('password:', echo_mode=QtGui.QLineEdit.Password)
-        layout.addLayout(line1)
-        layout.addLayout(line2)
+        self.layout.addLayout(line1)
+        self.layout.addLayout(line2)
 
         version_label = QtGui.QLabel('version ' + str(self.wizard.version))
-        layout.addWidget(version_label)
+        self.layout.addWidget(version_label)
+        self.check_for_update()
 
-        self.setLayout(layout)
+        self.setLayout(self.layout)
 
 
     def make_field(self, label_text, echo_mode=QtGui.QLineEdit.Normal):
@@ -202,8 +207,64 @@ class IntroPage(WizardPage):
         return hbox
 
 
+    def check_for_update(self):
+        self.update_label = QtGui.QLabel('Checking for update...')
+        self.layout.addWidget(self.update_label)
+
+        try:
+            current_version = distutils.version.StrictVersion(self.wizard.version)
+            self.newest_version = current_version
+            ml = urllib.urlopen('https://archive.org/metadata/MusicLocker/files')
+            files = json.load(ml)
+            for file in files['result']:
+                name = file['name']
+                match = re.search('ArchiveCD-([\d\.]+)\.exe', name)
+                if match:
+                    v = distutils.version.StrictVersion(match.group(1))
+                    if v > current_version:
+                        self.newest_version = v
+            if self.newest_version > current_version:
+                self.update_label.setText('A new version ({v}) was found'.format(v=v))
+                self.update_button = QtGui.QPushButton('Download and launch update')
+                self.update_button.clicked.connect(self.download_launch_update)
+                self.layout.addWidget(self.update_button)
+            else:
+                self.update_label.setText('ArchiveCD is up to date')
+        except Exception:
+            self.update_label.setText('Could not check for an update')
+
+
+    def download_launch_update(self):
+        self.update_button.setParent(None) #remove update_button
+        self.is_complete = False
+        self.emit(QtCore.SIGNAL("completeChanged()"))
+        app.processEvents()
+
+        new_file = 'ArchiveCD-{v}.exe'.format(v=self.newest_version)
+        path = os.path.join(os.getcwd(), new_file)
+
+        if not os.path.exists(path):
+            try:
+                url = 'https://archive.org/download/MusicLocker/{f}'.format(f=new_file)
+                print 'Downloading {url} to {p}'.format(url=url, p=path)
+                sys.stdout.flush()
+                self.update_label.setText('Downloading {f}...'.format(f=new_file))
+                app.processEvents()
+                urllib.urlretrieve(url, path)
+            except Exception:
+                self.update_label.setText('Could not download update')
+                app.processEvents()
+                return
+
+        print 'Launching {f}'.format(f=new_file)
+        sys.stdout.flush()
+        self.update_label.setText('Launching {f}...'.format(f=new_file))
+        app.processEvents()
+        os.execlp(path, new_file)
+
+
     def isComplete(self):
-        return (sys.platform == 'win32')
+        return self.is_complete
 
 
 # ScanDrivesPage

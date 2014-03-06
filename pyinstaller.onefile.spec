@@ -1,4 +1,15 @@
 # -*- mode: python -*-
+from distutils.version import StrictVersion
+
+import sys
+sys.path.append(os.getcwd())
+import wizard
+
+v = StrictVersion(wizard.ArchiveWizard.version)
+major, minor, patch = v.version
+assert patch == 0
+name = 'ArchiveCD-{major}.{minor:03d}.exe'.format(major=major, minor=minor)
+
 a = Analysis(['wizard.py'],
              pathex=['y:\\archivecd'],
              hiddenimports=[],
@@ -15,7 +26,7 @@ exe = EXE(pyz,
           onefile_binaries,
           a.zipfiles,
           a.datas,
-          name='wizard.exe',
+          name=name,
           debug=False,
           strip=None,
           upx=True,
