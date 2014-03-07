@@ -27,25 +27,25 @@ class ArchiveWizard(QtGui.QWizard):
     Page_Intro, Page_Scan_Drives, Page_Lookup_CD, Page_Mark_Added, Page_MusicBrainz, Page_EAC, Page_Select_EAC, Page_Verify_EAC, Page_Upload, Page_Verify_Upload = range(10)
 
     useragent = 'Internet Archive Music Locker'
-    version   = '0.109'
+    version   = '0.110'
     url       = 'https://archive.org'
     metadata_services = ['musicbrainz.org', 'freedb.org', 'gracenote.com']
     service_logos = {
         'archive.org': {
-            'image':    'ia_logo.jpg',
-            'template': '<a href="https://archive.org/details/{id}"><img src="{img}"></a>',
+            'image':    u'ia_logo.jpg',
+            'template': u'<a href="https://archive.org/details/{id}"><img src="{img}"></a>',
         },
         'musicbrainz.org': {
-            'image':    'mb_logo.png',
-            'template': '<a href="http://musicbrainz.org/release/{id}"><img src="{img}"></a>',
+            'image':    u'mb_logo.png',
+            'template': u'<a href="http://musicbrainz.org/release/{id}"><img src="{img}"></a>',
         },
         'freedb.org': {
-            'image':    'freedb_logo.jpg',
-            'template': '<a href="http://freedb.freedb.org/~cddb/cddb.cgi?cmd=cddb+read+{id}&hello=joe+my.host.com+xmcd+2.1&proto=6"><img src="{img}"></a>',
+            'image':    u'freedb_logo.jpg',
+            'template': u'<a href="http://freedb.freedb.org/~cddb/cddb.cgi?cmd=cddb+read+{id}&hello=joe+my.host.com+xmcd+2.1&proto=6"><img src="{img}"></a>',
         },
         'gracenote.com': {
-            'image':    'gracenote_logo.png',
-            'template': '<img src="{img}">',
+            'image':    u'gracenote_logo.png',
+            'template': u'<img src="{img}">',
         },
     }
 
@@ -112,8 +112,7 @@ class ArchiveWizard(QtGui.QWizard):
 
         for md in releases:
             item_id = md['id']
-
-            button = QtGui.QRadioButton("{t}\n{a}\n{d} {c}".format(t=md.get('title', ''), a=', '.join(md.get('artists', '')), d=md.get('date', ''), c=md.get('country', '')))
+            button = QtGui.QRadioButton(u"{t}\n{a}\n{d} {c}".format(t=md.get('title', ''), a=', '.join(md.get('artists', '')), d=md.get('date', ''), c=md.get('country', '')))
             button.toggled.connect(page.radio_clicked)
 
             if md.get('qimg') is not None:
@@ -224,7 +223,7 @@ class IntroPage(WizardPage):
                     if v > current_version:
                         self.newest_version = v
             if self.newest_version > current_version:
-                self.update_label.setText('A new version ({v}) was found'.format(v=v))
+                self.update_label.setText(u'A new version ({v}) was found'.format(v=v))
                 self.update_button = QtGui.QPushButton('Download and launch update')
                 self.update_button.clicked.connect(self.download_launch_update)
                 self.layout.addWidget(self.update_button)
@@ -240,15 +239,15 @@ class IntroPage(WizardPage):
         self.emit(QtCore.SIGNAL("completeChanged()"))
         app.processEvents()
 
-        new_file = 'ArchiveCD-{v}.exe'.format(v=self.newest_version)
+        new_file = u'ArchiveCD-{v}.exe'.format(v=self.newest_version)
         path = os.path.join(os.getcwd(), new_file)
 
         if not os.path.exists(path):
             try:
-                url = 'https://archive.org/download/archivecd/{f}'.format(f=new_file)
-                print 'Downloading {url} to {p}'.format(url=url, p=path)
+                url = u'https://archive.org/download/archivecd/{f}'.format(f=new_file)
+                print u'Downloading {url} to {p}'.format(url=url, p=path)
                 sys.stdout.flush()
-                self.update_label.setText('Downloading {f}...'.format(f=new_file))
+                self.update_label.setText(u'Downloading {f}...'.format(f=new_file))
                 app.processEvents()
                 urllib.urlretrieve(url, path)
             except Exception:
@@ -258,7 +257,7 @@ class IntroPage(WizardPage):
 
         print 'Launching {f}'.format(f=new_file)
         sys.stdout.flush()
-        self.update_label.setText('Launching {f}...'.format(f=new_file))
+        self.update_label.setText(u'Launching {f}...'.format(f=new_file))
         app.processEvents()
         os.execlp(path, new_file)
 
@@ -454,7 +453,7 @@ class BackgroundThread(QtCore.QThread):
 
         qimg = None
         if img is not None:
-            img_url = "https://archive.org/download/{id}/{img}".format(id=item_id, img=img)
+            img_url = u"https://archive.org/download/{id}/{img}".format(id=item_id, img=img)
             qimg = self.get_cover_qimg(img_url)
             #print 'loading image from ', img_url
             #sys.stdout.flush()
@@ -541,8 +540,8 @@ class BackgroundThread(QtCore.QThread):
             if recording:
                 milliseconds = recording.get('length')
                 seconds = float(milliseconds)/1000.0
-                length = '{m}:{s:02d}'.format(m=int(seconds/60), s=int(seconds%60))
-                description += '{n}. {t} {l}<br/>'.format(n=track.get('number'), t=recording.get('title'), l=length)
+                length = u'{m}:{s:02d}'.format(m=int(seconds/60), s=int(seconds%60))
+                description += u'{n}. {t} {l}<br/>'.format(n=track.get('number'), t=recording.get('title'), l=length)
 
         return description
 
@@ -785,46 +784,49 @@ class EACPage(WizardPage):
         sys.stdout.flush()
 
         self.url = 'https://archive.org/upload'
-        args = {'collection':   'acdc',
-                'source':       'CD',
-                'releasetype':  'album',
-                'toc':          self.wizard.toc_string,
-                'test_item':    1,
+        args = {u'collection':   u'acdc',
+                u'source':       u'CD',
+                u'releasetype':  u'album',
+                u'toc':          self.wizard.toc_string,
+                u'test_item':    1,
                }
 
         if self.wizard.mb_chosen is not None:
             md = self.wizard.mb_result[self.wizard.mb_chosen]
-            for key in ['title', 'artists', 'date', 'description']:
+            for key in [u'title', u'artists', u'date', u'description']:
                 if key in md:
                     val = md[key]
-                    if key == 'description':
+                    if key == u'description':
                         if isinstance(val, list):
                             val = val[0]
                         val = val.replace('\n', '<br/>')
-                    if key == 'artists':
-                        key = 'creator[]'
+                    if key == u'artists':
+                        key = u'creator[]'
                     args[key] = val
             if md['type'] == 'musicbrainz.org':
-                args['external-identifier[]'] = ['urn:mb_release_id:'+md['id']]
+                args[u'external-identifier[]'] = [u'urn:mb_release_id:'+md['id']]
 
         freedb_id = self.get_freedb_external_id()
         gracenote_id, gracenote_genre = self.get_gracenote_metadata()
         for id in (freedb_id, gracenote_id):
             if id:
-                external_ids = args.get('external-identifier[]', [])
-                args['external-identifier[]'] = external_ids + [id]
+                external_ids = args.get(u'external-identifier[]', [])
+                args[u'external-identifier[]'] = external_ids + [id]
 
         if gracenote_genre:
-            args['subject'] = gracenote_genre
+            args[u'subject'] = gracenote_genre
 
         id = self.make_identifier(args)
         if id:
-            args['suggested_identifier'] = id
-
+            args[u'suggested_identifier'] = id
         print 'args', json.dumps(args, indent=4)
+
+        #urlencode does not work with unicode data
+        str_args = self.utf8_encode(args)
+        print urllib.urlencode(str_args, True)
         sys.stdout.flush()
 
-        self.url += '?' + urllib.urlencode(args, True)
+        self.url += '?' + urllib.urlencode(str_args, True)
 
 
     def get_freedb_external_id(self):
@@ -832,7 +834,7 @@ class EACPage(WizardPage):
             freedb = self.wizard.metadata['freedb.org']['releases']
             freedb_genre = freedb[0]['genre']
             freedb_id = freedb[0]['id']
-            return 'urn:freedb_id:{id}'.format(id=freedb_id)
+            return u'urn:freedb_id:{id}'.format(id=freedb_id)
         except (LookupError, TypeError):
             return None
 
@@ -842,7 +844,7 @@ class EACPage(WizardPage):
             gracenote = self.wizard.metadata['gracenote.com']['releases']
             gracenote_id = gracenote[0]['id']
             gracenote_genre = gracenote[0].get('genre')
-            return 'urn:gracenote_id:{id}'.format(id=gracenote_id), gracenote_genre
+            return u'urn:gracenote_id:{id}'.format(id=gracenote_id), gracenote_genre
         except (LookupError, TypeError):
             return None, None
 
@@ -854,10 +856,28 @@ class EACPage(WizardPage):
             artist = regex.sub('', args['creator[]'][0].lower().replace(' ', '-'))
             title  = regex.sub('', args['title'].lower().replace(' ', '-'))
             if artist and title:
-                id     = 'cd_{title}_{artist}'.format(artist=artist, title=title)
+                id     = u'cd_{title}_{artist}'.format(artist=artist, title=title)
         except Exception:
             pass
         return id
+
+
+    def utf8_encode(self, args):
+        str_args = {}
+        for k, v in args.iteritems():
+            if isinstance(v, unicode):
+                str_args[k] = v.encode('utf-8')
+            elif isinstance(v, list):
+                l = []
+                for item in v:
+                    if isinstance(item, unicode):
+                        l.append(item.encode('utf-8'))
+                    else:
+                        l.append(item)
+                str_args[k] = l
+            else:
+                str_args[k] = v
+        return str_args
 
 
     def nextId(self):
