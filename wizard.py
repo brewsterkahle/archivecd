@@ -43,7 +43,7 @@ class ArchiveWizard(QtGui.QWizard):
     Page_Intro, Page_Scan_Drives, Page_Lookup_CD, Page_Mark_Added, Page_MusicBrainz, Page_EAC, Page_Select_EAC, Page_Verify_EAC, Page_Upload, Page_Verify_Upload = range(10)
 
     useragent = 'Internet Archive Music Locker'
-    version   = '0.110'
+    version   = '0.111'
     url       = 'https://archive.org'
     metadata_services = ['musicbrainz.org', 'freedb.org', 'gracenote.com']
     service_logos = {
@@ -173,8 +173,9 @@ class WizardPage(QtGui.QWizardPage):
 class IntroPage(WizardPage):
     def __init__(self, wizard):
         WizardPage.__init__(self, wizard)
-        self.setTitle('Introduction')
+        self.setTitle('Archive your CDs in the Archive.org Music Locker')
         self.is_complete = (sys.platform == 'win32')
+        self.setButtonText(QtGui.QWizard.NextButton, "Login")
 
 
     def initializePage(self):
@@ -184,42 +185,62 @@ class IntroPage(WizardPage):
             self.setSubTitle(error_str)
             return
 
-        self.setSubTitle('Please enter a CD and click the Next button')
-
         self.layout = QtGui.QVBoxLayout()
+        about_txt = '''<b>About the Audiophile CD Collection</b>
+            <br/><br/>
+            The Internet Archive is building a world class joint collection for researchers and preservation.
+            <br/><br/>
+            <a href="http://blog.archive.org/?p=8051&preview=true">Help</a>
+        '''
+        about_label = QtGui.QLabel(about_txt)
+        about_label.setWordWrap(True)
+        about_label.setOpenExternalLinks(True)
+        self.layout.addWidget(about_label)
+
+        grid_layout = QtGui.QGridLayout()
+        grid_layout.setColumnStretch(0, 1)
+        grid_layout.setColumnStretch(2, 1)
+
         pixmap = QtGui.QPixmap(self.wizard.img_path('logo.jpg'))
         img_label = QtGui.QLabel()
         img_label.setPixmap(pixmap)
         img_label.setAlignment(QtCore.Qt.AlignCenter)
-        self.layout.addWidget(img_label)
 
-        line1 = self.make_field('archive.org username:')
-        line2 = self.make_field('password:', echo_mode=QtGui.QLineEdit.Password)
-        self.layout.addLayout(line1)
-        self.layout.addLayout(line2)
+        #self.layout.addWidget(img_label)
+        grid_layout.addWidget(img_label, 0, 1)
+
+        login_label = QtGui.QLabel('Login to archive.org')
+        login_label.setAlignment(QtCore.Qt.AlignCenter)
+        grid_layout.addWidget(login_label, 1, 1)
+
+        username_label = QtGui.QLabel('username:')
+        username_label.setAlignment(QtCore.Qt.AlignRight)
+        grid_layout.addWidget(username_label, 2, 0)
+        username_field = QtGui.QLineEdit()
+        username_field.setFixedWidth(230)
+        username_field.setPlaceholderText('you@example.com')
+        grid_layout.addWidget(username_field, 2, 1, alignment=QtCore.Qt.AlignCenter)
+
+        password_label = QtGui.QLabel('password:')
+        password_label.setAlignment(QtCore.Qt.AlignRight)
+        grid_layout.addWidget(password_label, 3, 0)
+        password_field = QtGui.QLineEdit(self) #set self as parent so we can set focus later
+        password_field.setEchoMode(QtGui.QLineEdit.Password)
+        password_field.setFixedWidth(230)
+        grid_layout.addWidget(password_field, 3, 1, alignment=QtCore.Qt.AlignCenter)
+
+        #The username_field placeholder text won't show unless the focus is set elsewhere.
+        #Unfortunately, it seems like we can only put focus in another text field, so
+        #set focus in the password field
+        password_field.setFocus()
+
+        self.layout.addLayout(grid_layout)
 
         version_label = QtGui.QLabel('version ' + str(self.wizard.version))
         self.layout.addWidget(version_label)
         self.check_for_update()
 
         self.setLayout(self.layout)
-
-
-    def make_field(self, label_text, echo_mode=QtGui.QLineEdit.Normal):
-        hbox = QtGui.QHBoxLayout()
-        label = QtGui.QLabel(label_text)
-        label.setFixedWidth(200)
-        label.setAlignment(QtCore.Qt.AlignRight)
-
-        field = QtGui.QLineEdit()
-        field.setFixedWidth(200)
-        field.setEchoMode(echo_mode)
-
-        hbox.addStretch(1)
-        hbox.addWidget(label)
-        hbox.addWidget(field)
-        hbox.addStretch(1)
-        return hbox
 
 
     def check_for_update(self):
