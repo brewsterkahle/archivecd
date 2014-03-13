@@ -43,7 +43,7 @@ class ArchiveWizard(QtGui.QWizard):
     Page_Intro, Page_Scan_Drives, Page_Lookup_CD, Page_Mark_Added, Page_MusicBrainz, Page_EAC, Page_Select_EAC, Page_Verify_EAC, Page_Upload, Page_Verify_Upload = range(10)
 
     useragent = 'Internet Archive Music Locker'
-    version   = '0.111'
+    version   = '0.112'
     url       = 'https://archive.org'
     metadata_services = ['musicbrainz.org', 'freedb.org', 'gracenote.com']
     service_logos = {
@@ -128,7 +128,16 @@ class ArchiveWizard(QtGui.QWizard):
 
         for md in releases:
             item_id = md['id']
-            button = QtGui.QRadioButton(u"{t}\n{a}\n{d} {c}".format(t=md.get('title', ''), a=', '.join(md.get('artists', '')), d=md.get('date', ''), c=md.get('country', '')))
+
+            button_txt = u"{t}\n{a}".format(t=md.get('title', ''), a=', '.join(md.get('artists', '')))
+            if md.get('date') or md.get('country'):
+                button_txt += u"\n{d} {c}".format(d=md.get('date', ''), c=md.get('country', ''))
+            if md['type'] != 'archive.org':
+                button_txt += u"\nMetadata provider: {p}".format(p=md['type'])
+                if md['type'] == 'musicbrainz.org':
+                    button_txt += u" (preferred)"
+
+            button = QtGui.QRadioButton(button_txt)
             button.toggled.connect(page.radio_clicked)
 
             if md.get('qimg') is not None:
@@ -149,6 +158,7 @@ class ArchiveWizard(QtGui.QWizard):
                 hbox.addWidget(label)
 
             vbox.addLayout(hbox)
+            vbox.addSpacing(10)
             radio_buttons.append(button)
 
         if len(releases) > 0:
@@ -186,11 +196,10 @@ class IntroPage(WizardPage):
             return
 
         self.layout = QtGui.QVBoxLayout()
-        about_txt = '''<b>About the Audiophile CD Collection</b>
+        about_txt = '''<qt>
+            Please help the Internet Archive build the Audiophile CD Collection, a world class joint collection for researchers and preservation.
             <br/><br/>
-            The Internet Archive is building a world class joint collection for researchers and preservation.
-            <br/><br/>
-            <a href="http://blog.archive.org/?p=8051&preview=true">Help</a>
+            <a href="http://blog.archive.org/?p=8051&preview=true">Help</a></qt>
         '''
         about_label = QtGui.QLabel(about_txt)
         about_label.setWordWrap(True)
@@ -664,8 +673,10 @@ class LookupCDPage(WizardPage):
         sys.stdout.flush()
 
         if self.show_ia:
+            self.status_label.setText('A possible match for this CD was found in the Archive.org database. Please select your CD below.')
             widget, self.radio_buttons, self.wizard.ia_result = self.wizard.display_metadata(self, ['archive.org'])
         elif self.show_md:
+            self.status_label.setText('The CD was not in Archive.org, so please upload it. Select metadata that matches your CD below.')
             widget, self.radio_buttons, self.wizard.mb_result = self.wizard.display_metadata(self, self.wizard.metadata_services)
         else:
             widget = QtGui.QLabel('Your album was not found in our database. Please press the Next button to continue.')
@@ -753,9 +764,9 @@ class MarkAddedPage(WizardPage):
 class MusicBrainzPage(WizardPage):
     def __init__(self, wizard):
         WizardPage.__init__(self, wizard)
-        self.setTitle('Please choose a match from the MusicBrainz database')
+        self.setTitle('Add metadata and upload CD.')
 
-        self.status_label = QtGui.QLabel('This will help us fill out the metadata for your CD automatically')
+        self.status_label = QtGui.QLabel('The CD was not in Archive.org, so please upload it. Select metadata that matches your CD below.')
         self.status_label.setWordWrap(True)
 
         self.layout = QtGui.QVBoxLayout()
