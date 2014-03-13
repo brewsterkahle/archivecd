@@ -43,7 +43,7 @@ class ArchiveWizard(QtGui.QWizard):
     Page_Intro, Page_Scan_Drives, Page_Lookup_CD, Page_Mark_Added, Page_MusicBrainz, Page_EAC, Page_Select_EAC, Page_Verify_EAC, Page_Upload, Page_Verify_Upload = range(10)
 
     useragent = 'Internet Archive Music Locker'
-    version   = '0.112'
+    version   = '0.113'
     url       = 'https://archive.org'
     metadata_services = ['musicbrainz.org', 'freedb.org', 'gracenote.com']
     service_logos = {
@@ -750,9 +750,31 @@ class MarkAddedPage(WizardPage):
     def __init__(self, wizard):
         WizardPage.__init__(self, wizard)
         self.setTitle('CD Added to Locker')
-        self.setSubTitle('This CD was added to your Music Locker')
+        self.setSubTitle('This CD was added to your Music Locker on Archive.org')
         self.setFinalPage(True)
         self.setButtonText(QtGui.QWizard.FinishButton, "Scan Another CD")
+
+
+    def initializePage(self):
+        print 'ia chosen', self.wizard.ia_chosen
+        sys.stdout.flush()
+
+        layout = QtGui.QVBoxLayout()
+
+        try:
+            md = self.wizard.metadata['archive.org']['releases'][self.wizard.ia_chosen]
+            if md.get('qimg') is not None:
+                label = QtGui.QLabel()
+                label.setPixmap(QtGui.QPixmap(md['qimg']))
+                layout.addWidget(label)
+        except Exception:
+            pass
+
+        goto_label = QtGui.QLabel('<a href="http://archive.org/MusicLocker">Go to your Music Locker</a>')
+        goto_label.setOpenExternalLinks(True)
+        layout.addWidget(goto_label)
+
+        self.setLayout(layout)
 
 
     def nextId(self):
