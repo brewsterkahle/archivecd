@@ -234,6 +234,14 @@ class IntroPage(WizardPage):
         #set focus in the password field
         password_field.setFocus()
 
+        forgot_txt = '''<a href="https://archive.org/account/login.createaccount.php">Join Us</a>
+                        &nbsp;&nbsp;-&nbsp;&nbsp;
+                        <a href="https://archive.org/account/login.forgotpw.php">Forgot Password</a>
+                     '''
+        forgot_label = QtGui.QLabel(forgot_txt)
+        forgot_label.setOpenExternalLinks(True)
+        grid_layout.addWidget(forgot_label, 4, 1, alignment=QtCore.Qt.AlignCenter)
+
         self.layout.addLayout(grid_layout)
 
         version_label = QtGui.QLabel('version ' + str(self.wizard.version))
