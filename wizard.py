@@ -43,8 +43,10 @@ class ArchiveWizard(QtGui.QWizard):
     Page_Intro, Page_Scan_Drives, Page_Lookup_CD, Page_Mark_Added, Page_MusicBrainz, Page_EAC, Page_Select_EAC, Page_Verify_EAC, Page_Upload, Page_Verify_Upload = range(10)
 
     useragent = 'Internet Archive Music Locker'
-    version   = '0.113'
+    version   = '0.114'
     url       = 'https://archive.org'
+    archivecd_server = 'dowewantit0.us.archive.org'
+    archivecd_port   = '5000'
     metadata_services = ['musicbrainz.org', 'freedb.org', 'gracenote.com']
     service_logos = {
         'archive.org': {
@@ -253,11 +255,26 @@ class IntroPage(WizardPage):
 
         self.layout.addLayout(grid_layout)
 
+        port_layout = QtGui.QHBoxLayout()
+        combo_label = QtGui.QLabel('Server port:')
+        self.port_combo = QtGui.QComboBox()
+        self.port_combo.addItems(['5000', '4999'])
+        self.connect(self.port_combo, QtCore.SIGNAL("currentIndexChanged(const QString&)"), self.change_port)
+
+        port_layout.addWidget(combo_label)
+        port_layout.addWidget(self.port_combo)
+        port_layout.addStretch()
+        self.layout.addLayout(port_layout)
+
         version_label = QtGui.QLabel('version ' + str(self.wizard.version))
         self.layout.addWidget(version_label)
         self.check_for_update()
 
-        self.setLayout(self.layout)
+        self.setLayout(self.layout)\
+
+
+    def change_port(self):
+        self.wizard.archivecd_port = self.port_combo.currentText()
 
 
     def check_for_update(self):
@@ -430,7 +447,8 @@ class BackgroundThread(QtCore.QThread):
         status_label = self.status_label
         status_label.setText('Checking the archive.org database')
 
-        url = 'http://dowewantit0.us.archive.org:5000/lookupCD?'
+        url = 'http://{s}:{p}/lookupCD?'.format(s=self.wizard.archivecd_server,
+                                                p=self.wizard.archivecd_port)
         url += urllib.urlencode({'sectors':   self.wizard.toc_string,
                                  'mb_discid': self.wizard.disc_id,
                                  'freedb_discid': self.wizard.freedb_discid,
