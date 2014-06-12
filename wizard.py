@@ -43,7 +43,7 @@ class ArchiveWizard(QtGui.QWizard):
     Page_Intro, Page_Scan_Drives, Page_Lookup_CD, Page_Mark_Added, Page_MusicBrainz, Page_EAC, Page_Select_EAC, Page_Verify_EAC, Page_Upload, Page_Verify_Upload = range(10)
 
     useragent = 'Internet Archive Music Locker'
-    version   = '0.114'
+    version   = '0.115'
     url       = 'https://archive.org'
     archivecd_server = 'dowewantit0.us.archive.org'
     archivecd_port   = '5000'
@@ -884,7 +884,6 @@ class EACPage(WizardPage):
                 u'source':       u'CD',
                 u'releasetype':  u'album',
                 u'toc':          self.wizard.toc_string,
-                u'test_item':    1,
                }
 
         if self.wizard.mb_chosen is not None:
