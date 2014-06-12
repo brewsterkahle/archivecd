@@ -858,16 +858,37 @@ class EACPage(WizardPage):
         self.setTitle('EAC')
         self.setSubTitle('Please open Exact Audio Copy and copy the CD to your hard drive. When you are finished, please click the Upload button to add your CD to your Music Locker.')
         self.url = 'https://archive.org/upload'
+        self.args = {}
 
-        def handle_button():
+        def handle_button_upload():
             webbrowser.open(self.url)
             self.button_clicked = True
             self.emit(QtCore.SIGNAL("completeChanged()"))
 
+        def handle_button_later():
+            audio_dir = str(QtGui.QFileDialog.getExistingDirectory(self, "Select Directory of Audio Files"))
+            extra_meta = {}
+            for key in self.args:
+                if key == u'suggested_identifier':
+                    continue
+                new_key = re.sub(r'\[\]$', '', key)
+                extra_meta[new_key] = self.args[key]
+            meta_path = os.path.join(audio_dir, 'ia_extrameta.json')
+            print 'writing metadata to ', meta_path
+            sys.stdout.flush()
+            fh = open(meta_path, 'wb')
+            json.dump(extra_meta, fh, indent=4)
+            self.button_clicked = True
+            self.emit(QtCore.SIGNAL("completeChanged()"))
+
+
         self.button = QtGui.QPushButton('Open Web Browser to Upload to Music Locker')
-        self.button.clicked.connect(handle_button)
+        self.button.clicked.connect(handle_button_upload)
+        self.button_later = QtGui.QPushButton('Write Information to the Hard Drive for later uploading')
+        self.button_later.clicked.connect(handle_button_later)
         layout = QtGui.QVBoxLayout()
         layout.addWidget(self.button)
+        layout.addWidget(self.button_later)
         self.setLayout(layout)
         self.button_clicked = False
         self.setButtonText(QtGui.QWizard.FinishButton, "Scan Another CD")
@@ -880,11 +901,11 @@ class EACPage(WizardPage):
         sys.stdout.flush()
 
         self.url = 'https://archive.org/upload'
-        args = {u'collection':   u'acdc',
-                u'source':       u'CD',
-                u'releasetype':  u'album',
-                u'toc':          self.wizard.toc_string,
-               }
+        self.args = {u'collection':   u'acdc',
+                     u'source':       u'CD',
+                     u'releasetype':  u'album',
+                     u'toc':          self.wizard.toc_string,
+                    }
 
         if self.wizard.mb_chosen is not None:
             md = self.wizard.mb_result[self.wizard.mb_chosen]
@@ -897,27 +918,27 @@ class EACPage(WizardPage):
                         val = val.replace('\n', '<br/>')
                     if key == u'artists':
                         key = u'creator[]'
-                    args[key] = val
+                    self.args[key] = val
             if md['type'] == 'musicbrainz.org':
-                args[u'external-identifier[]'] = [u'urn:mb_release_id:'+md['id']]
+                self.args[u'external-identifier[]'] = [u'urn:mb_release_id:'+md['id']]
 
         freedb_id = self.get_freedb_external_id()
         gracenote_id, gracenote_genre = self.get_gracenote_metadata()
         for id in (freedb_id, gracenote_id):
             if id:
-                external_ids = args.get(u'external-identifier[]', [])
-                args[u'external-identifier[]'] = external_ids + [id]
+                external_ids = self.args.get(u'external-identifier[]', [])
+                self.args[u'external-identifier[]'] = external_ids + [id]
 
         if gracenote_genre:
-            args[u'subject'] = gracenote_genre
+            self.args[u'subject'] = gracenote_genre
 
-        id = self.make_identifier(args)
+        id = self.make_identifier(self.args)
         if id:
-            args[u'suggested_identifier'] = id
-        print 'args', json.dumps(args, indent=4)
+            self.args[u'suggested_identifier'] = id
+        print 'args', json.dumps(self.args, indent=4)
 
         #urlencode does not work with unicode data
-        str_args = self.utf8_encode(args)
+        str_args = self.utf8_encode(self.args)
         print urllib.urlencode(str_args, True)
         sys.stdout.flush()
 
