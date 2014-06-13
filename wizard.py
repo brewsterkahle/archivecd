@@ -43,7 +43,7 @@ class ArchiveWizard(QtGui.QWizard):
     Page_Intro, Page_Scan_Drives, Page_Lookup_CD, Page_Mark_Added, Page_MusicBrainz, Page_EAC, Page_Select_EAC, Page_Verify_EAC, Page_Upload, Page_Verify_Upload = range(10)
 
     useragent = 'Internet Archive Music Locker'
-    version   = '0.116'
+    version   = '0.117'
     url       = 'https://archive.org'
     archivecd_server = 'dowewantit0.us.archive.org'
     archivecd_port   = '5000'
@@ -866,15 +866,16 @@ class EACPage(WizardPage):
             self.emit(QtCore.SIGNAL("completeChanged()"))
 
         def handle_button_later():
-            audio_dir = str(QtGui.QFileDialog.getExistingDirectory(self, "Select Directory of Audio Files"))
+            audio_dir = unicode(QtGui.QFileDialog.getExistingDirectory(self, "Select Directory of Audio Files"))
+
             extra_meta = {}
             for key in self.args:
                 if key in [u'suggested_identifier', u'collection']:
                     continue
                 new_key = re.sub(r'\[\]$', '', key)
                 extra_meta[new_key] = self.args[key]
-            meta_path = os.path.join(audio_dir, 'ia_extrameta.json')
-            print 'writing metadata to ', meta_path
+            meta_path = os.path.join(audio_dir, u'ia_extrameta.json')
+            print u'writing metadata to ', meta_path.encode('utf-8')
             sys.stdout.flush()
             fh = open(meta_path, 'wb')
             json.dump(extra_meta, fh, indent=4)
