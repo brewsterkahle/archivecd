@@ -43,7 +43,7 @@ class ArchiveWizard(QtGui.QWizard):
     Page_Intro, Page_Scan_Drives, Page_Lookup_CD, Page_Mark_Added, Page_MusicBrainz, Page_EAC, Page_Select_EAC, Page_Verify_EAC, Page_Upload, Page_Verify_Upload = range(10)
 
     useragent = 'Internet Archive Music Locker'
-    version   = '0.115'
+    version   = '0.116'
     url       = 'https://archive.org'
     archivecd_server = 'dowewantit0.us.archive.org'
     archivecd_port   = '5000'
@@ -856,7 +856,7 @@ class EACPage(WizardPage):
     def __init__(self, wizard):
         WizardPage.__init__(self, wizard)
         self.setTitle('EAC')
-        self.setSubTitle('Please open Exact Audio Copy and copy the CD to your hard drive. When you are finished, please click the Upload button to add your CD to your Music Locker.')
+        self.setSubTitle('Please open Exact Audio Copy and copy the CD to your hard drive. When you are finished with EAC, please click one of the two buttons below:')
         self.url = 'https://archive.org/upload'
         self.args = {}
 
@@ -869,7 +869,7 @@ class EACPage(WizardPage):
             audio_dir = str(QtGui.QFileDialog.getExistingDirectory(self, "Select Directory of Audio Files"))
             extra_meta = {}
             for key in self.args:
-                if key == u'suggested_identifier':
+                if key in [u'suggested_identifier', u'collection']:
                     continue
                 new_key = re.sub(r'\[\]$', '', key)
                 extra_meta[new_key] = self.args[key]
@@ -884,10 +884,13 @@ class EACPage(WizardPage):
 
         self.button = QtGui.QPushButton('Open Web Browser to Upload to Music Locker')
         self.button.clicked.connect(handle_button_upload)
+        or_label = QtGui.QLabel('or')
+        or_label.setAlignment(QtCore.Qt.AlignCenter)
         self.button_later = QtGui.QPushButton('Write Information to the Hard Drive for later uploading')
         self.button_later.clicked.connect(handle_button_later)
         layout = QtGui.QVBoxLayout()
         layout.addWidget(self.button)
+        layout.addWidget(or_label)
         layout.addWidget(self.button_later)
         self.setLayout(layout)
         self.button_clicked = False
