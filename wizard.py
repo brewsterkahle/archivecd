@@ -35,6 +35,8 @@ import re
 import urllib
 import webbrowser
 import musicbrainzngs
+import codecs
+import eac_log_to_musicbrainz_discid
 
 
 # ArchiveWizard
@@ -43,7 +45,7 @@ class ArchiveWizard(QtGui.QWizard):
     Page_Intro, Page_Scan_Drives, Page_Lookup_CD, Page_Mark_Added, Page_MusicBrainz, Page_EAC, Page_Select_EAC, Page_Verify_EAC, Page_Upload, Page_Verify_Upload = range(10)
 
     useragent = 'Internet Archive Music Locker'
-    version   = '0.117'
+    version   = '0.118'
     url       = 'https://archive.org'
     archivecd_server = 'dowewantit0.us.archive.org'
     archivecd_port   = '5000'
@@ -105,6 +107,7 @@ class ArchiveWizard(QtGui.QWizard):
         self.metadata      = None
         self.ia_chosen     = None
         self.mb_chosen     = None
+        self.eac_log_file  = None
 
 
     def img_path(self, img):
@@ -344,15 +347,33 @@ class ScanDrivesPage(WizardPage):
         WizardPage.__init__(self, wizard)
         self.setTitle('Insert CD and choose your CD Drive from the list below')
 
+        def handle_button_eac_log():
+            log_file = unicode(QtGui.QFileDialog.getOpenFileName(self, "Select Directory of Audio Files", ".", '*.log'))
+            print u'Chose EAC log file', log_file
+            sys.stdout.flush()
+            if log_file != '':
+                self.wizard.eac_log_file = log_file
+                self.emit(QtCore.SIGNAL("completeChanged()"))
+                self.wizard.next()
+
+
         layout = QtGui.QVBoxLayout()
         self.combo = QtGui.QComboBox()
         self.combo.addItems(['(Choose CD Drive)'])
         self.connect(self.combo, QtCore.SIGNAL("currentIndexChanged(const QString&)"),
                      self, QtCore.SIGNAL("completeChanged()"))
 
+        or_label = QtGui.QLabel('or')
+        or_label.setAlignment(QtCore.Qt.AlignCenter)
+        self.button_eac_log = QtGui.QPushButton('Choose EAC Log File')
+        self.button_eac_log.clicked.connect(handle_button_eac_log)
+
         layout.addWidget(self.combo)
+        layout.addWidget(or_label)
+        layout.addWidget(self.button_eac_log)
         self.setLayout(layout)
         self.scanned_drives = False
+
 
     def initializePage(self):
         #After the first CD is scanned, this page becomes the first page of the wizard
@@ -392,7 +413,7 @@ class ScanDrivesPage(WizardPage):
 
 
     def isComplete(self):
-        return (self.combo.currentIndex() != 0)
+        return ((self.combo.currentIndex() != 0) or (self.wizard.eac_log_file is not None))
 
 
 # BackgroundThread
@@ -411,7 +432,11 @@ class BackgroundThread(QtCore.QThread):
     def run(self):
         status_label = self.status_label
 
-        disc = self.read_cd()
+        if self.wizard.eac_log_file is not None:
+            disc = self.read_eac_log()
+        else:
+            disc = self.read_cd()
+
         if disc is None:
             self.taskFinished.emit()
             return
@@ -439,6 +464,17 @@ class BackgroundThread(QtCore.QThread):
             disc = discid.read(str(cd_drive))
         except discid.disc.DiscError:
             self.status_label.setText('Unable to read disc')
+            return None
+        return disc
+
+
+    def read_eac_log(self):
+        try:
+            fh = codecs.open(self.wizard.eac_log_file, encoding='utf-16-le').readlines()
+            toc = eac_log_to_musicbrainz_discid.calculate_mb_toc_numbers(eac_log_to_musicbrainz_discid.filter_toc_entries(iter(fh)))
+            disc = discid.put(toc[0], toc[1], toc[2], toc[3:])
+        except:
+            self.status_label.setText('Unable to parse EAC log file')
             return None
         return disc
 
