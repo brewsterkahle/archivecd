@@ -45,7 +45,7 @@ class ArchiveWizard(QtGui.QWizard):
     Page_Intro, Page_Scan_Drives, Page_Lookup_CD, Page_Mark_Added, Page_MusicBrainz, Page_EAC, Page_Select_EAC, Page_Verify_EAC, Page_Upload, Page_Verify_Upload = range(10)
 
     useragent = 'Internet Archive Music Locker'
-    version   = '0.118'
+    version   = '0.119'
     url       = 'https://archive.org'
     archivecd_server = 'dowewantit0.us.archive.org'
     archivecd_port   = '5000'
@@ -975,6 +975,13 @@ class EACPage(WizardPage):
         id = self.make_identifier(self.args)
         if id:
             self.args[u'suggested_identifier'] = id
+
+        if self.wizard.eac_log_file is not None:
+            m = re.search(r'/(\d{2}-\d{4}\d*)/', self.wizard.eac_log_file)
+            if m:
+                external_ids = self.args.get(u'external-identifier[]', [])
+                self.args[u'external-identifier[]'] = external_ids + [u'urn:arcmusic:'+m.group(1)]
+
         print 'args', json.dumps(self.args, indent=4)
 
         #urlencode does not work with unicode data
