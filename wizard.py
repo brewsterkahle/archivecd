@@ -45,7 +45,7 @@ class ArchiveWizard(QtGui.QWizard):
     Page_Intro, Page_Scan_Drives, Page_Lookup_CD, Page_Mark_Added, Page_MusicBrainz, Page_EAC, Page_Select_EAC, Page_Verify_EAC, Page_Upload, Page_Verify_Upload = range(10)
 
     useragent = 'Internet Archive Music Locker'
-    version   = '0.120'
+    version   = '0.121'
     url       = 'https://archive.org'
     archivecd_server = 'dowewantit0.us.archive.org'
     archivecd_port   = '5000'
@@ -108,6 +108,7 @@ class ArchiveWizard(QtGui.QWizard):
         self.ia_chosen     = None
         self.mb_chosen     = None
         self.eac_log_file  = None
+        self.barcode       = None
 
 
     def img_path(self, img):
@@ -348,6 +349,7 @@ class ScanDrivesPage(WizardPage):
         self.setTitle('Insert CD and choose your CD Drive from the list below')
 
         def handle_button_eac_log():
+            self.barcode_field.clear()
             log_file = unicode(QtGui.QFileDialog.getOpenFileName(self, "Select Directory of Audio Files", ".", '*.log'))
             print u'Chose EAC log file', log_file
             sys.stdout.flush()
@@ -356,6 +358,9 @@ class ScanDrivesPage(WizardPage):
                 self.emit(QtCore.SIGNAL("completeChanged()"))
                 self.wizard.next()
 
+        def handle_barcode_field(string):
+            self.wizard.barcode = string
+            self.emit(QtCore.SIGNAL("completeChanged()"))
 
         layout = QtGui.QVBoxLayout()
         self.combo = QtGui.QComboBox()
@@ -368,9 +373,19 @@ class ScanDrivesPage(WizardPage):
         self.button_eac_log = QtGui.QPushButton('Choose EAC Log File')
         self.button_eac_log.clicked.connect(handle_button_eac_log)
 
+        or_label2 = QtGui.QLabel('or')
+        or_label2.setAlignment(QtCore.Qt.AlignCenter)
+        self.barcode_field = QtGui.QLineEdit()
+        self.barcode_field.setAlignment(QtCore.Qt.AlignCenter)
+        self.barcode_field.setPlaceholderText('scan barcode')
+        self.barcode_field.textChanged.connect(handle_barcode_field)
+
         layout.addWidget(self.combo)
         layout.addWidget(or_label)
         layout.addWidget(self.button_eac_log)
+        layout.addWidget(or_label2)
+        layout.addWidget(self.barcode_field)
+
         self.setLayout(layout)
         self.scanned_drives = False
 
@@ -378,6 +393,7 @@ class ScanDrivesPage(WizardPage):
     def initializePage(self):
         #After the first CD is scanned, this page becomes the first page of the wizard
         self.wizard.reset()
+        self.barcode_field.clear()
 
         if self.scanned_drives:
             #If we have already scanned the drives, then we have already processed a
@@ -413,7 +429,7 @@ class ScanDrivesPage(WizardPage):
 
 
     def isComplete(self):
-        return ((self.combo.currentIndex() != 0) or (self.wizard.eac_log_file is not None))
+        return ((self.combo.currentIndex() != 0) or (self.wizard.eac_log_file is not None) or (self.barcode_field.text() != ""))
 
 
 # BackgroundThread
@@ -432,18 +448,19 @@ class BackgroundThread(QtCore.QThread):
     def run(self):
         status_label = self.status_label
 
-        if self.wizard.eac_log_file is not None:
-            disc = self.read_eac_log()
-        else:
-            disc = self.read_cd()
+        if not self.wizard.barcode:
+            if self.wizard.eac_log_file is not None:
+                disc = self.read_eac_log()
+            else:
+                disc = self.read_cd()
 
-        if disc is None:
-            self.taskFinished.emit()
-            return
+            if disc is None:
+                self.taskFinished.emit()
+                return
 
-        self.wizard.toc_string = disc.toc_string
-        self.wizard.disc_id    = disc.id
-        self.wizard.freedb_discid  = disc.freedb_id
+            self.wizard.toc_string = disc.toc_string
+            self.wizard.disc_id    = disc.id
+            self.wizard.freedb_discid  = disc.freedb_id
 
         obj = self.lookup_ia()
         self.obj = obj
@@ -485,12 +502,17 @@ class BackgroundThread(QtCore.QThread):
 
         url = 'http://{s}:{p}/lookupCD?'.format(s=self.wizard.archivecd_server,
                                                 p=self.wizard.archivecd_port)
-        url += urllib.urlencode({'sectors':   self.wizard.toc_string,
-                                 'mb_discid': self.wizard.disc_id,
-                                 'freedb_discid': self.wizard.freedb_discid,
-                                 'version': 2})
-        #test_toc = '1 10 211995 182 22295 46610 71440 94720 108852 132800 155972 183515 200210'
-        #url += urllib.urlencode({'sectors': test_toc})
+
+        if self.wizard.barcode:
+            url += urllib.urlencode({'barcode': self.wizard.barcode,
+                                     'version': 2})
+        else:
+            url += urllib.urlencode({'sectors':   self.wizard.toc_string,
+                                     'mb_discid': self.wizard.disc_id,
+                                     'freedb_discid': self.wizard.freedb_discid,
+                                     'version': 2})
+            #test_toc = '1 10 211995 182 22295 46610 71440 94720 108852 132800 155972 183515 200210'
+            #url += urllib.urlencode({'sectors': test_toc})
 
         #test results from coverartarchive:
         #url = 'http://dowewantit0.us.archive.org:5000/lookupCD?mb_discid=4kclzDTxSO_3SOzXlmxxjDCsTPw-&freedb_discid=c90a6e10&version=2&sectors=1+16+200447+150+1795+22335+38900+42357+54407+69417+90770+93927+104780+120090+122705+130822+146112+162935+180952'
