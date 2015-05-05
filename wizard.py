@@ -45,7 +45,7 @@ class ArchiveWizard(QtGui.QWizard):
     Page_Intro, Page_Scan_Drives, Page_Lookup_CD, Page_Mark_Added, Page_MusicBrainz, Page_EAC, Page_Select_EAC, Page_Verify_EAC, Page_Upload, Page_Verify_Upload = range(10)
 
     useragent = 'Internet Archive Music Locker'
-    version   = '0.121'
+    version   = '0.122'
     url       = 'https://archive.org'
     archivecd_server = 'dowewantit0.us.archive.org'
     archivecd_port   = '5000'
@@ -135,7 +135,16 @@ class ArchiveWizard(QtGui.QWizard):
         for md in releases:
             item_id = md['id']
 
-            button_txt = u"{t}\n{a}".format(t=md.get('title', ''), a=', '.join(md.get('artists', '')))
+            #protect against md api returning None for title or artist
+            title = md.get('title', '')
+            if title is None:
+                title = u''
+            if md.get('artists', '') is not None:
+                artists = u', '.join(md.get('artists', ''))
+            else:
+                artists = u''
+
+            button_txt = u"{t}\n{a}".format(t=title, a=artists)
             if md.get('date') or md.get('country'):
                 button_txt += u"\n{d} {c}".format(d=md.get('date', ''), c=md.get('country', ''))
             if md['type'] != 'archive.org':
@@ -526,9 +535,12 @@ class BackgroundThread(QtCore.QThread):
         print json.dumps(obj, indent=4)
         sys.stdout.flush()
 
-        for item in obj['archive.org']['releases']:
+        #cover_limit = 10
+        for i, item in enumerate(obj['archive.org']['releases']):
             item_id = item['id']
-            ia_md = self.fetch_ia_metadata(item_id)
+            #fetch_cover = (i < cover_limit)
+            fetch_cover = True
+            ia_md = self.fetch_ia_metadata(item_id, fetch_cover)
             item.update(ia_md)
 
         for key in obj:
@@ -551,7 +563,7 @@ class BackgroundThread(QtCore.QThread):
         return obj
 
 
-    def fetch_ia_metadata(self, item_id):
+    def fetch_ia_metadata(self, item_id, fetch_cover):
         url = 'https://archive.org/metadata/'+item_id
         print 'fetching ', url
         sys.stdout.flush()
@@ -561,12 +573,15 @@ class BackgroundThread(QtCore.QThread):
         #sys.stdout.flush()
 
         md = {'id':      item_id,
-              'qimg':    self.get_cover_ia(item_id, metadata),
               'title':   metadata['metadata'].get('title'),
               'artists': metadata['metadata'].get('creator'),
               'date':    metadata['metadata'].get('date'),
               'collection': metadata['metadata'].get('collection'),
              }
+
+        if fetch_cover:
+            md['qimg'] = self.get_cover_ia(item_id, metadata)
+
         if isinstance(md['artists'], basestring):
             md['artists'] = [md['artists']]
         return md
